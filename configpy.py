@@ -6,7 +6,6 @@ import yaml, json
 from datetime import datetime
 from get_ext_repo import get_ext_repo
 from flask_socketio import SocketIO
-from flask_socketio import emit
 import os
 import redis
 import time
@@ -14,10 +13,18 @@ import logging
 import fnmatch
 from logging.handlers import RotatingFileHandler
 
+from flask_apscheduler import APScheduler
+
+# Needed for SocketIO to actually work...
+import eventlet
+eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config['secret'] = 's;ldi3r#$R@lkjedf$'
 bootstrap = Bootstrap(app)
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 socketio = SocketIO(app)
 
 
@@ -68,19 +75,21 @@ def dbcheck_logic(data, **kwargs):
             data['device'] = ''
 
     except Exception as e:
-        emit('dsc', {'db_error': str(e)}, broadcast=True)
+        socketio.emit('dsc', {'db_error': str(e)}, broadcast=True)
         return
 
     if 'loopcheck' in kwargs:
-        emit('dsc', data, broadcast=True)
+        socketio.emit('dsc', data, broadcast=True)
 
-    emit('dsc', data)
+    socketio.emit('dsc', data)
 
 
-def dbcheck_loop(data):
-    while True:
-        dbcheck_logic(data, loopcheck='yes')
-        time.sleep(5)
+def dbcheck_loop():
+    data = {'Get': 'devices'}
+    with app.test_request_context('/'):
+        while True:
+            dbcheck_logic(data, loopcheck='yes')
+            time.sleep(1)
 
 
 @app.route('/hub', methods=['GET', 'POST'])
@@ -100,7 +109,6 @@ def hub_api(serialnumber):
 
 @app.route('/render', methods=['GET', 'POST'])
 def render():
-
     repo_dir = 'repo/'
     debug = ''
 
@@ -195,7 +203,7 @@ def test_connect(data):
     no_sec = current_time.split('.')
     time = no_sec.pop(0)
     data['event_time'] = time
-    emit('console', data)
+    socketio.emit('console', data)
 
 
 @socketio.on('dsc')
@@ -209,7 +217,7 @@ def dsc(data):
         # update the global var so the loop is not run again.
         dbcheck_stat = 1
         # Start the loop
-        dbcheck_loop(data)
+        app.apscheduler.add_job(func=dbcheck_loop, trigger='date', id='loop')
 
     # If the loops been started but this is a new user request, run the loop logic once.
     # That way, the users web request completes with valid data.
