@@ -12,17 +12,13 @@ RUN git clone https://github.com/natemellendorf/configpy.git
 
 WORKDIR /home/devops/configpy
 
-RUN chmod +x /home/devops/configpy/boot.sh
-
 RUN python3 -m pip install --upgrade pip
 
 RUN pip3 install -r requirements.txt
-
-RUN pip3 install gunicorn
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 EXPOSE 5000
 
-ENTRYPOINT ["/bin/bash", "/home/devops/configpy/boot.sh"]
+ENTRYPOINT python3 configpy.py
