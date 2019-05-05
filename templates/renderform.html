@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block app_content %}
+
+<div class="row">
+    <div class="col-sm-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+
+                <h5 class="card-title">Jinja/YAML Render</h5>
+
+                <div class="form-group">
+                    <label for="changerepo">Link to GitHub repo.</label>
+                    <input type="text" class="form-control" id="changerepo" aria-describedby="repo_help" oninput="button_change()" placeholder="https://github.com/user/repo" value="">
+                    <small>Please provide the URL to your repo</small>
+                </div>
+
+                    <div id="repo_help" class="card-body">
+                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Launch Demo</button>
+                    </div>
+
+                    <div id="console_div" class="form-group" style="display:none">
+                        <textarea class="form-control form-control-sm" rows="5" id="console" disabled></textarea>
+                    </div>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 mb-3">
+        <div id="form_div" class="card" style="display:none">
+            <div class="card-body">
+
+                <form action method="post" class="form" role="form">
+                    <div class="form-group" required>
+                        <label for="template">Jinja Template</label>
+                        <small id="view_template"></small>
+                        <select class="form-control" name="templatefile" id="template" required disabled>
+                            <option disabled selected>Select a template...</option>
+                        </select>
+                    </div>
+                    <p id="pre_answers"></p>
+                    <div id="answers_div" class="form-group" required style="display:none">
+                        <label for="dynamic_af">YAML Answers</label>
+                        <small><a href="https://codebeautify.org/yaml-validator" target="_blank"> (validator)</a> </small>
+                        <textarea class="form-control" name="dynamic_af" id="dynamic_af" rows="10" placeholder="Answers must be in YAML format." required disabled></textarea>
+                    </div>
+                </form>
+                <div id="render_button" style="display:none">
+                    <button name="process" id="process" class="btn btn-secondary" onclick="render_template()">Render</button>
+                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-toggle="modal" data-target=".bd-example-modal-lg">Maximize</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30" placeholder="Answers must be in YAML format." required disabled></textarea>
+        <button name="process" id="process_1" class="btn btn-secondary" onclick="update_small()" data-dismiss="modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="rendered_template" class="card mb-1" style="display:none">
+    <div class="card">
+        <div class="card-header">
+            <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <p id="post_process"></p>
+                    <textarea id="complete" class="form-control" rows="20"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+            console.log('http://' + document.domain + ':' + location.port);
+            socket.on('connect', function() {
+            });
+
+            </script>
+<script>
+
+           function render_template() {
+            var div = document.getElementById("rendered_template");
+            div.style.display = "block";
+            }
+
+            function display_form() {
+            var div = document.getElementById("form_div");
+            div.style.display = "block";
+            }
+
+            function display_answers() {
+            var div = document.getElementById("answers_div");
+            div.style.display = "block";
+            }
+
+            function display_console() {
+            var div = document.getElementById("console_div");
+            div.style.display = "block";
+            }
+
+            function update_big() {
+            var updated_answers = document.getElementById("dynamic_af").value;
+            $("#dynamic_af_large").val(updated_answers);
+            }
+
+            function update_small() {
+            var updated_answers = document.getElementById("dynamic_af_large").value;
+            $("#dynamic_af").val(updated_answers);
+            }
+
+            function toggle_render_button() {
+            var div = document.getElementById("render_button");
+            div.style.display = "block";
+            }
+
+            function disconnect_repo() {
+            document.getElementById("changerepo").value="";
+            location.reload();
+            }
+
+            function button_change(){
+            $('#action').html('Connect');
+            }
+
+            // SOCKET
+
+            socket.on('console', function(msg) {
+                console.log(msg);
+                var debug_log = document.getElementById("console");
+                debug_log.value += ('[' + msg['event_time'] + ']: ' + Object.values(msg['event']) + '\n');
+                debug_log.scrollTop = debug_log.scrollHeight;
+            });
+
+            // END
+
+            function action() {
+            var changerepo = document.getElementById("changerepo").value;
+            if (!changerepo){
+                $("#changerepo").val("https://github.com/natemellendorf/tr_templates");
+                change_repo();
+                } else {
+                change_repo();
+                }
+                }
+
+                  // Once repo URL is provided, create a dynamic list of .j2 files in repo and display.
+
+                  function change_repo() {
+                  $('#action').html('Connecting...');
+                  var changerepo = document.getElementById("changerepo").value;
+                  var data = {"repo_url":changerepo};
+
+                  // Sending user data to website console
+                  socket.emit('console', {'event': data});
+                  // Display the website console
+                  display_console();
+
+                  $("#changerepo").attr("disabled",true);
+
+                  $.ajax({
+                        url: "/render",
+                        type: "POST",
+                        contentType: 'application/json',
+                        data : JSON.stringify(data),
+                        // async: false,
+                        success: function(data){
+                                // var debug = JSON.stringify(data, null, 4);
+                                // var data_json = JSON.parse(data); // convert string into JSON.
+                                // console.log(data.content); // debugging
+                                // var error_check = debug.includes("error");
+
+                                if (data['error']){
+                                $('#repo_help').html('<button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Connect</button>' +
+                                '<div class="alert alert-warning alert-dismissible fade show" role="alert">' +
+                                '<b>Oh snap!</b> Something went wrong...<p>' +
+                                data['error'] +
+                                '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                                '<span aria-hidden="true">&times;</span>' +
+                                '</button>' +
+                                '</div>');
+
+                                } else {
+
+                                // Get badge for repo errors
+                                if (data['open_issues'] < 1){
+                                var badge = 'light'
+                                } else {
+                                var badge = 'warning'
+                                }
+                                // End
+
+                                var text = "";
+
+                                for (var x in data['files']) {
+                                text += '<option value=' + data['files'][x] + '>' + x + '</option>\n';
+                                }
+
+                                $("#template").html('<select class="form-control" name="templatefile" id="template" required>\n'+
+                                '<option disabled selected>Select a template...</option>\n' +
+                                text +
+                                '</select>');
+
+                                $('#repo_help').html(
+                                '<button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="location.reload()"">Disconnect</button>'
+                                // Removed because not supported in gitlab...
+                                /// ---
+                                //'<div class="alert alert-secondary alert-dismissible fade show" role="alert">' +
+                                //'<small><b>Name</b>: ' + data['name'] + '</small><br>' +
+                                //'<small><a href="' + data['url'] + '">' + data['url'] + '</a></small><br>' +
+                                //'<small>Owner: ' + data['owner']['login'] + '</small><br>' +
+                                //'<small>Updated: ' + data['updated_at'] + '</small><br>' +
+                                //'<small>Issues: <span class="badge badge-pill badge-' + badge + '">' + data['open_issues'] + '</span></small>' +
+                                //'<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                                //'<span aria-hidden="true">&times;</span>' +
+                                //'</button>' +
+                                //'</div>'
+
+                                );
+                                $("#template").attr("disabled",false);
+                                display_form();
+                                // location.reload();
+                                }
+                            }
+                   });
+                  };
+
+
+           // Function to dynamically load answer file onto page.
+
+            $(function() {
+                $("select[name=templatefile]").change(function() {
+                //$('#pre_answers').html('<img src="static/sm_loading.gif" /> retrieving...</img>');
+
+                var dict = [];
+                dict.push({
+                key:   document.getElementById("template").name,
+                value: document.getElementById("template").value
+                });
+
+                $("#view_template").html('<a href="' + document.getElementById("template").value + '" target="_blank"> (view template)</a>');
+
+                   $.ajax({
+                        url: "/show",
+                        type: "POST",
+                        contentType: 'application/json',
+                        data : JSON.stringify(dict),
+                        // async: false,
+
+                        // If answer file is found, update the page.
+                        success: function(response){
+                                var text = document.querySelectorAll("#dynamic_af, #dynamic_af_large");
+                                text.forEach(function(userItem) {
+                                $(userItem).attr("disabled",false);
+                                $(userItem).val(response);
+                                });
+                                //$("#dynamic_af").attr("disabled",false);
+                                //$("#dynamic_af").val(response);
+                                display_answers();
+                                $('#pre_answers').html('');
+                                toggle_render_button();
+                            }
+                   });
+                });
+            });
+
+            // Function to take provided answers, and produce the final render.
+
+            $(function() {
+                $("button[name=process]").click(
+                  function() {
+                    $('#post_process').html('<img src="static/sm_loading.gif" /> Rendering...</img>');
+                    var template = document.getElementById("template").value;
+                    var answers = document.getElementById("dynamic_af").value;
+					var repo_url = document.getElementById("changerepo").value;
+                    var data = {"repo_url":repo_url,"template":template,"answers":answers};
+                    async: false;
+                    // alert(data.template);
+                    // alert(data.answers);
+
+                    socket.emit('console', {'event': data});
+
+                   $.ajax({
+                        url: "/process",
+                        type: "POST",
+                        contentType: 'application/json',
+                        data : JSON.stringify(data),
+                        success: function(data){
+
+                                $('#post_process').html('');
+                                $("#complete").val(data);
+                                // reload();
+                            }
+                   });
+                });
+            });
+
+            function copy() {
+              let copy_render = document.getElementById("complete");
+              copy_render.select();
+              document.execCommand("copy");
+            };
+
+            </script>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+a {
+    color: #343a40;
+}
+a:visited {
+    color: #868e96;
+}
+a:hover {
+    color: #868e96;
+}
+a:focus {
+    color: #868e96;
+}
+a:active {
+    color: #868e96;
+}
+body { background: #f8f9fa !important;}

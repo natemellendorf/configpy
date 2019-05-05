@@ -1,0 +1,5 @@
+Here are your items:
+###################
+{% for x in items %}
+{{ x }}
+{% endfor %}

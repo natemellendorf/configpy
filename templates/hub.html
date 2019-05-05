@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block app_content %}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <a class="navbar-brand" href="#">Hub</a>
+  <div class="" id="navbarNavAltMarkup">
+    <div class="navbar-nav">
+      <a id="last_poll" class="nav-item nav-link disabled" tabindex="-1" aria-disabled="true">Polled: </a>
+    </div>
+  </div>
+</nav>
+
+<div id="alert" class="alert alert-danger" role="alert" style="display:none">
+</div>
+
+<div id="hub_event" style="display:none">
+</div>
+
+<p id="hub_spacer" style="display:none"></p>
+
+<div id="hub" style="display:block">
+</div>
+
+<script type="text/javascript" charset="utf-8">
+
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+            console.log('http://' + document.domain + ':' + location.port);
+            socket.on('connect', function() {
+            });
+
+            // SOCKET
+
+            socket.emit('dsc', {'event': 'Get devices'});
+
+            socket.on('dsc', function(msg) {
+                //console.log(msg);
+
+                var card = "";
+                var card_event = "";
+                var obj = msg['device'];
+
+                for (var key in obj){
+                const object = obj[key]
+                console.log(object);
+
+                var hostname = object['hostname'];
+                var serialnumber = object['device_sn'];
+                var config = object['config'];
+
+                console.log('-------');
+
+                var badge = "badge-secondary";
+
+                if (config != 'compliant'){
+                var badge = "badge-warning";
+
+                card_event += '<a href="hub/device/' + serialnumber + '" class="list-group-item d-flex justify-content-between align-items-center" target="_blank">' +
+                hostname +
+                '<span class="badge ' + badge + '">' + config + '</span>'+
+                '</a>';
+
+                } else
+
+                card += '<a href="hub/device/' + serialnumber + '" class="list-group-item d-flex justify-content-between align-items-center" target="_blank">' +
+                hostname +
+                '<span class="badge ' + badge + '">' + config + '</span>'+
+                '</a>';
+
+                }
+
+                if(card_event){
+
+                var div = document.getElementById("hub_event");
+                div.style.display = "block";
+                var div = document.getElementById("hub_spacer");
+                div.style.display = "block";
+
+                $('#hub_event').html('' +
+                '<div class="card">' +
+                '<div class="card-body">' +
+                '<div class="list-group">' +
+                card_event +
+                '</div>' +
+                '</div>' +
+                '</div>');
+
+                } else {
+
+                var div = document.getElementById("hub_event");
+                div.style.display = "none";
+                var div = document.getElementById("hub_spacer");
+                div.style.display = "none";
+
+                }
+
+                $('#hub').html('' +
+                '<div class="card">' +
+                '<div class="card-body">' +
+                '<div class="list-group">' +
+                card +
+                '</div>' +
+                '</div>' +
+                '</div>');
+
+                //document.getElementById("hub").innerHTML = txt
+
+                document.getElementById("last_poll").innerHTML = 'Polled: ' + msg['last_poll'];
+
+                if (msg['db_error']){
+                //console.log(msg['db_error']);
+                $('#alert').html(msg['db_error']);
+                var div = document.getElementById("alert");
+                div.style.display = "block";
+                var div = document.getElementById("hub");
+                div.style.display = "none";
+                } else {
+                var div = document.getElementById("alert");
+                div.style.display = "none";
+                var div = document.getElementById("hub");
+                div.style.display = "block";
+                }
+
+                //document.getElementById("hub").innerHTML = JSON.stringify(msg['device'], null, 4);
+            });
+
+            // END
+</script>
+
+{% endblock %}
