@@ -2,7 +2,7 @@ import redis
 import unittest
 import requests
 
-db = 'redis'
+db = '127.0.0.1'
 
 class TestUM(unittest.TestCase):
 
