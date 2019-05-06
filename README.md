@@ -2,7 +2,7 @@
 
 ### Author:
 Nate Mellendorf <br>
-https://www.linkedin.com/in/nathan-mellendorf/
+https://www.linkedin.com/in/nathan-mellendorf
 
 ## Overview:
 This project is the WebUI (frontend) for ConfigPy.
