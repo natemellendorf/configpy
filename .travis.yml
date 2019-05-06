@@ -1,0 +1,18 @@
+language: python
+
+services:
+  - docker
+
+before_install:
+- docker pull natemellendorf/configpy
+- docker pull redis
+- docker network create production
+- docker run --name redis -d -p 6379:6379 --network production --rm redis
+- docker run --name configpy -d -e REDIS_URI=redis -p 8080:5000 --network production --rm natemellendorf/configpy
+- docker ps -a
+
+install:
+  - pip install -r requirements.txt
+
+script:
+  - python3 unittests.py
