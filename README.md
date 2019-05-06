@@ -1,5 +1,5 @@
 # ConfigPy
-
+[![Build Status](https://travis-ci.com/natemellendorf/configpy.svg?branch=master)](https://travis-ci.com/natemellendorf/configpy)
 ### Author:
 Nate Mellendorf <br>
 https://www.linkedin.com/in/nathan-mellendorf
