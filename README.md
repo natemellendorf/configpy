@@ -5,11 +5,10 @@ Nate Mellendorf <br>
 [https://www.linkedin.com/in/nathan-mellendorf/](https://www.linkedin.com/in/nathan-mellendorf/)<br>
 
 ## Overview:
-This project is the WebUI (frontend) for ConfigPy.
-It leverages a Redis DB and the ConfigPY-Node project to build a ZTP-like experience for Juniper equipment.
-ConfigPy has a Jijna2/YAML templating feature built in, which allows the user to render config templates stored in a remote repository.
-Togeather, the projects goal is to simplify templating and config management for Juniper network equipment.
-(It does not work with other vendors at this time.)
+This project is for a WebUI (frontend) called ConfigPy.
+ConfigPy leverages a Redis DB and the ConfigPY-Node project to build a ZTP-like experience for Juniper equipment.
+ConfigPy has a Jijna2/YAML templating feature built in, which allows the user to render complete config files from Jinja/YAML templates stored in a remote repository.
+Togeather, these projects were built to simplify templating and config management for Juniper network equipment.
 
 #### Additional details
 This WebUI is built by a network engineer first, developer second. Some of the code is likely questionable at best.
