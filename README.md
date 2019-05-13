@@ -23,6 +23,8 @@ ConfigPy-Node is an OpenSSH server, which is configured to terminate Juniper out
 ConfigPy-Node searches for configuraton files in GitLab, and then syncs them with the Juniper devices checking in.
 ConfigPy has a WebUI, which displays information about the devices checking-in with ConfigPy-Node.
 
+## Demo:
+![ConfigPy Demo](demo/ConfigPy.gif)
 
 #### Additional details
 This WebUI is built by a network engineer first, developer second. Some of my code is likely questionable.
@@ -65,7 +67,16 @@ You could confirm this by looking at the logs of the ConfigPy-Node container
 
 #### Deploy along side a GitLab container
 ```
-docker run --detach --hostname gitlab.example.com --publish 443:443 --publish 80:80 --publish 22:22 --name gitlab --restart always --volume /srv/gitlab/config:/etc/gitlab --volume /srv/gitlab/logs:/var/log/gitlab --volume /srv/gitlab/data:/var/opt/gitlab gitlab/gitlab-ce:latest
+docker run --detach --hostname gitlab.example.com \
+--publish 443:443 \
+--publish 80:80 \
+--publish 22:22 \
+--name gitlab \
+--restart always \
+--volume /srv/gitlab/config:/etc/gitlab \
+--volume /srv/gitlab/logs:/var/log/gitlab \
+--volume /srv/gitlab/data:/var/opt/gitlab \
+gitlab/gitlab-ce:latest
 ```
 
 #### Deploy the ConfigPy container
