@@ -224,6 +224,79 @@ def dsc(data):
     # Else, the page will load with no data (until the loop runs.)
     dbcheck_logic(data)
 
+@socketio.on('gitlabPush')
+def gitlabPush(data):
+
+    def current_time():
+        current_time = str(datetime.now().time())
+        no_sec = current_time.split('.')
+        time = no_sec.pop(0)
+        return time
+
+    print(data)
+
+    new_data = {}
+
+    if data['clientID'] \
+            and data['repo_auth_token'] \
+            and data['serialNumber'] \
+            and data['device_config'] \
+            and data['repo_uri']:
+
+        words = data["repo_uri"].split("/")
+        protocol = words[0]
+        domain = words[2]
+        gitlab_url = '{0}//{1}'.format(protocol, domain)
+        findall = '{0}/api/v4/projects/'.format(gitlab_url)
+
+        headers = {
+            'PRIVATE-TOKEN': "{0}".format(data['repo_auth_token']),
+            'Content-Type': "application/json",
+            'User-Agent': "ConfigPy",
+            'Accept': "*/*",
+            'Cache-Control': "no-cache",
+            'Connection': "keep-alive",
+            'cache-control': "no-cache"
+        }
+
+        payload = {"branch": "master", "content": data['device_config'], "commit_message": "new commit"}
+
+        querystring = {"per_page": "100"}
+
+        try:
+            r = requests.get(findall, headers=headers, params=querystring)
+            returned = r.json()
+
+            for x in returned:
+                if x['path_with_namespace'] in data["repo_uri"]:
+                    new_file_url = f'{findall}{x["id"]}/repository/files/{data["clientID"]}%2F{data["serialNumber"]}%2Eset'
+                    try:
+                        returned = requests.post(new_file_url, data=json.dumps(payload), headers=headers)
+                        print(returned.status_code)
+                        if returned.status_code == 201:
+                            new_data['event_time'] = current_time()
+                            new_data['event'] = returned.text
+                            socketio.emit('git_console', new_data)
+                        else:
+                            raise Exception(f'{returned.text}')
+                    except Exception as e:
+                        print(e)
+                        new_data['event_time'] = current_time()
+                        new_data['event'] = str(e)
+                        socketio.emit('git_console', new_data)
+
+        except Exception as e:
+            print(e)
+            new_data['event_time'] = current_time()
+            new_data['event'] = str(e)
+            socketio.emit('git_console', new_data)
+
+    else:
+        new_data['event_time'] = current_time()
+        new_data['event'] = 'The form submitted is missing values.'
+        socketio.emit('git_console', new_data)
+
+
 
 @socketio.on('connect')
 def connect():

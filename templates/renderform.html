@@ -47,31 +47,81 @@
                 </form>
                 <div id="render_button" style="display:none">
                     <button name="process" id="process" class="btn btn-secondary" onclick="render_template()">Render</button>
-                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-toggle="modal" data-target=".bd-example-modal-lg">Maximize</button>
+                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-toggle="modal" data-target=".edit">Edit</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30" placeholder="Answers must be in YAML format." required disabled></textarea>
-        <button name="process" id="process_1" class="btn btn-secondary" onclick="update_small()" data-dismiss="modal">Save</button>
+<div class="modal edit" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="card">
+                <h5 class="card-header">Edit</h5>
+                <div class="card-body">
+                    <form>
+                    <div class="form-group">
+                    <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30" placeholder="Answers must be in YAML format." required disabled></textarea>
+                    </div>
+                    <button name="process" id="process_1" class="btn btn-secondary" onclick="update_small()" data-backdrop="static" data-dismiss="modal">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <div id="rendered_template" class="card mb-1" style="display:none">
     <div class="card">
         <div class="card-header">
             <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-target=".gitlab">Push to GitLab</button>
         </div>
         <div class="card-body">
             <div class="row">
                 <p id="post_process"></p>
                     <textarea id="complete" class="form-control" rows="20"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade gitlab" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="card">
+                <h5 class="card-header">Push to GitLab</h5>
+                <div class="card-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="configRepo">Remote Repository</label>
+                            <input type="text" class="form-control" id="configRepo" aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs" required>
+                            <small id="configRepooHelp" class="form-text text-muted">URL to remote repository.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="clientID">SNMP Contact ID</label>
+                            <input type="text" class="form-control" id="clientID" aria-describedby="Contact ID" placeholder="12345" value="23" required>
+                            <small id="cidHelp" class="form-text text-muted">Should be a number, and will be used to bootstrap a new device.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="serialNumber">Device Serial Number</label>
+                            <input type="text" class="form-control" id="serialNumber" placeholder="ABCD12345" value="CV1417AF0163" required>
+                            <small id="serialHelp" class="form-text text-muted">Serial number for the device that maps to this config file.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="gitlabToken">GitLab Personal Token</label>
+                            <input type="password" class="form-control" id="gitlabToken" placeholder="Token" value="yCPx74vUn5oFierEnQfa" required>
+                            <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
+                        </div>
+                        <button type="button" id="gitlabSubmit" onclick="gitlabPush()" class="btn btn-secondary">Push</button>
+                        </form>
+                    <div id="gitlabForm">
+                    </div>
+                    <div id="git_console_div" class="form-group" style="display:none">
+                        <textarea class="form-control form-control-sm" rows="5" id="git_console" disabled></textarea>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -107,6 +157,11 @@
             div.style.display = "block";
             }
 
+            function display_git_console() {
+            var div = document.getElementById("git_console_div");
+            div.style.display = "block";
+            }
+
             function update_big() {
             var updated_answers = document.getElementById("dynamic_af").value;
             $("#dynamic_af_large").val(updated_answers);
@@ -115,6 +170,18 @@
             function update_small() {
             var updated_answers = document.getElementById("dynamic_af_large").value;
             $("#dynamic_af").val(updated_answers);
+            }
+
+            function gitlabPush() {
+            var clientID = document.getElementById("clientID").value;
+            var repo_auth_token = document.getElementById("gitlabToken").value;
+            var serialNumber = document.getElementById("serialNumber").value;
+            var device_config = document.getElementById("complete").value;
+            var repo_uri = document.getElementById("configRepo").value;
+
+            $('#gitlabForm').html(clientID + '<br>' + gitlabToken + '<br>' + serialNumber + '<br>' + device_config);
+
+            socket.emit('gitlabPush', {'repo_uri': repo_uri, 'clientID': clientID, 'repo_auth_token': repo_auth_token, 'serialNumber': serialNumber, 'device_config': device_config});
             }
 
             function toggle_render_button() {
@@ -138,6 +205,14 @@
                 var debug_log = document.getElementById("console");
                 debug_log.value += ('[' + msg['event_time'] + ']: ' + Object.values(msg['event']) + '\n');
                 debug_log.scrollTop = debug_log.scrollHeight;
+            });
+
+            socket.on('git_console', function(msg) {
+                display_git_console();
+                console.log(msg);
+                var git_debug_log = document.getElementById("git_console");
+                git_debug_log.value += ('[' + msg['event_time'] + ']: ' + Object.values(msg['event']) + '\n');
+                git_debug_log.scrollTop = git_debug_log.scrollHeight;
             });
 
             // END
