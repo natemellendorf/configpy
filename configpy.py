@@ -233,8 +233,6 @@ def gitlabPush(data):
         time = no_sec.pop(0)
         return time
 
-    print(data)
-
     new_data = {}
 
     if data['clientID'] \
@@ -268,17 +266,37 @@ def gitlabPush(data):
             returned = r.json()
 
             for x in returned:
+
                 if x['path_with_namespace'] in data["repo_uri"]:
                     new_file_url = f'{findall}{x["id"]}/repository/files/{data["clientID"]}%2F{data["serialNumber"]}%2Eset'
+
                     try:
                         returned = requests.post(new_file_url, data=json.dumps(payload), headers=headers)
-                        print(returned.status_code)
+
                         if returned.status_code == 201:
                             new_data['event_time'] = current_time()
                             new_data['event'] = returned.text
                             socketio.emit('git_console', new_data)
+
+                        elif returned.status_code == 400 and 'this name already exists' in returned.text:
+
+                            try:
+                                returned = requests.put(new_file_url, data=json.dumps(payload), headers=headers)
+                                new_data['event_time'] = current_time()
+                                new_data['event'] = returned.text
+                                socketio.emit('git_console', new_data)
+
+                            except Exception as e:
+                                print(e)
+                                new_data['event_time'] = current_time()
+                                new_data['event'] = str(e)
+                                socketio.emit('git_console', new_data)
                         else:
+                            new_data['event_time'] = current_time()
+                            new_data['event'] = returned.text
+                            socketio.emit('git_console', new_data)
                             raise Exception(f'{returned.text}')
+
                     except Exception as e:
                         print(e)
                         new_data['event_time'] = current_time()
@@ -296,8 +314,6 @@ def gitlabPush(data):
         new_data['event'] = 'The form submitted is missing values.'
         socketio.emit('git_console', new_data)
 
-
-
 @socketio.on('connect')
 def connect():
     print('Client connected!')
@@ -309,5 +325,5 @@ def disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
 

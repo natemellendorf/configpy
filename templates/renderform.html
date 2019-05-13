@@ -115,16 +115,16 @@
                             <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
                         </div>
                         <button type="button" id="gitlabSubmit" onclick="gitlabPush()" class="btn btn-secondary">Push</button>
-                        </form>
-                    <div id="gitlabForm">
-                    </div>
-                    <div id="git_console_div" class="form-group" style="display:none">
-                        <textarea class="form-control form-control-sm" rows="5" id="git_console" disabled></textarea>
-                    </div>
+                    </form>
+                </div>
+                <div class="card-footer" id="git_console_div" style="display:none">
+                    <textarea class="form-control form-control-sm" rows="5" id="git_console" disabled>
+                    </textarea>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script type="text/javascript" charset="utf-8">
@@ -179,8 +179,6 @@
             var device_config = document.getElementById("complete").value;
             var repo_uri = document.getElementById("configRepo").value;
 
-            $('#gitlabForm').html(clientID + '<br>' + gitlabToken + '<br>' + serialNumber + '<br>' + device_config);
-
             socket.emit('gitlabPush', {'repo_uri': repo_uri, 'clientID': clientID, 'repo_auth_token': repo_auth_token, 'serialNumber': serialNumber, 'device_config': device_config});
             }
 
@@ -211,7 +209,7 @@
                 display_git_console();
                 console.log(msg);
                 var git_debug_log = document.getElementById("git_console");
-                git_debug_log.value += ('[' + msg['event_time'] + ']: ' + Object.values(msg['event']) + '\n');
+                git_debug_log.value += ('[' + msg['event_time'] + ']: ' + msg['event'] + '\n');
                 git_debug_log.scrollTop = git_debug_log.scrollHeight;
             });
 
