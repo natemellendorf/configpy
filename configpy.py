@@ -48,6 +48,20 @@ r = redis.Redis(host=REDIS_URI, port=6379, db=0)
 
 dbcheck_stat = 0
 
+
+def current_time():
+    current_time = str(datetime.now().time())
+    no_sec = current_time.split('.')
+    time = no_sec.pop(0)
+    return time
+
+def static_error(error):
+    new_data = {}
+    print(error)
+    new_data['event_time'] = current_time()
+    new_data['event'] = str(error)
+    return new_data
+
 def dbcheck_logic(data, **kwargs):
     #print(kwargs)
     current_time = str(datetime.now().time())
@@ -157,7 +171,7 @@ def process():
             for dependency in dependencies:
                 if dependency == key:
                     # print('Process: ' + value)
-                    r = requests.get(value)
+                    r = requests.get(value, timeout=5)
                     with open("repo/{0}".format(key), "w") as file:
                         file.write(r.text)
 
@@ -185,7 +199,7 @@ def show():
     received = request.get_json()
     #print(received)
     answerfile = str(received[0]['value']).replace('.j2', '.yml')
-    r = requests.get(answerfile)
+    r = requests.get(answerfile, timeout=5)
 
     return r.text
 
@@ -227,12 +241,7 @@ def dsc(data):
 @socketio.on('gitlabPush')
 def gitlabPush(data):
 
-    def current_time():
-        current_time = str(datetime.now().time())
-        no_sec = current_time.split('.')
-        time = no_sec.pop(0)
-        return time
-
+    #print(data)
     new_data = {}
 
     if data['clientID'] \
@@ -262,7 +271,7 @@ def gitlabPush(data):
         querystring = {"per_page": "100"}
 
         try:
-            r = requests.get(findall, headers=headers, params=querystring)
+            r = requests.get(findall, headers=headers, params=querystring, timeout=5)
             returned = r.json()
 
             for x in returned:
@@ -271,9 +280,15 @@ def gitlabPush(data):
                     new_file_url = f'{findall}{x["id"]}/repository/files/{data["clientID"]}%2F{data["serialNumber"]}%2Eset'
 
                     try:
-                        returned = requests.post(new_file_url, data=json.dumps(payload), headers=headers)
+                        returned = requests.post(new_file_url, data=json.dumps(payload), headers=headers, timeout=5)
 
                         if returned.status_code == 201:
+                            if data['ztp']:
+                                rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
+                                rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
+                                rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
+                                rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
+
                             new_data['event_time'] = current_time()
                             new_data['event'] = returned.text
                             socketio.emit('git_console', new_data)
@@ -281,16 +296,20 @@ def gitlabPush(data):
                         elif returned.status_code == 400 and 'this name already exists' in returned.text:
 
                             try:
-                                returned = requests.put(new_file_url, data=json.dumps(payload), headers=headers)
+                                returned = requests.put(new_file_url, data=json.dumps(payload), headers=headers, timeout=5)
                                 new_data['event_time'] = current_time()
                                 new_data['event'] = returned.text
-                                socketio.emit('git_console', new_data)
+
+                                if data['ztp']:
+                                    rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
+                                    rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
+                                    rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
+                                    rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
+                                    socketio.emit('git_console', new_data)
 
                             except Exception as e:
-                                print(e)
-                                new_data['event_time'] = current_time()
-                                new_data['event'] = str(e)
-                                socketio.emit('git_console', new_data)
+                                error = static_error(e)
+                                socketio.emit('git_console', error)
                         else:
                             new_data['event_time'] = current_time()
                             new_data['event'] = returned.text
@@ -298,16 +317,12 @@ def gitlabPush(data):
                             raise Exception(f'{returned.text}')
 
                     except Exception as e:
-                        print(e)
-                        new_data['event_time'] = current_time()
-                        new_data['event'] = str(e)
-                        socketio.emit('git_console', new_data)
+                        error = static_error(e)
+                        socketio.emit('git_console', error)
 
         except Exception as e:
-            print(e)
-            new_data['event_time'] = current_time()
-            new_data['event'] = str(e)
-            socketio.emit('git_console', new_data)
+            error = static_error(e)
+            socketio.emit('git_console', error)
 
     else:
         new_data['event_time'] = current_time()
@@ -325,5 +340,5 @@ def disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=80, debug=True)
 

@@ -47,7 +47,7 @@
                 </form>
                 <div id="render_button" style="display:none">
                     <button name="process" id="process" class="btn btn-secondary" onclick="render_template()">Render</button>
-                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-toggle="modal" data-target=".edit">Edit</button>
+                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-backdrop="static" data-toggle="modal" data-target=".edit">Edit</button>
                 </div>
             </div>
         </div>
@@ -64,7 +64,8 @@
                     <div class="form-group">
                     <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30" placeholder="Answers must be in YAML format." required disabled></textarea>
                     </div>
-                    <button name="process" id="process_1" class="btn btn-secondary" onclick="update_small()" data-backdrop="static" data-dismiss="modal">Save</button>
+                    <button name="button" id="process_1" class="btn btn-secondary" onclick="update_small()" data-dismiss="modal">Save</button>
+                        <button type="button" id="editClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </form>
                 </div>
             </div>
@@ -76,7 +77,7 @@
     <div class="card">
         <div class="card-header">
             <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
-            <button type="button" class="btn btn-secondary" data-toggle="modal" data-target=".gitlab">Push to GitLab</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".gitlab">Push to GitLab</button>
         </div>
         <div class="card-body">
             <div class="row">
@@ -102,7 +103,7 @@
                         <div class="form-group">
                             <label for="clientID">SNMP Contact ID</label>
                             <input type="text" class="form-control" id="clientID" aria-describedby="Contact ID" placeholder="12345" value="23" required>
-                            <small id="cidHelp" class="form-text text-muted">Should be a number, and will be used to bootstrap a new device.</small>
+                            <small id="cidHelp" class="form-text text-muted">Should be a number, and will be the directory used to store the config.</small>
                         </div>
                         <div class="form-group">
                             <label for="serialNumber">Device Serial Number</label>
@@ -110,11 +111,21 @@
                             <small id="serialHelp" class="form-text text-muted">Serial number for the device that maps to this config file.</small>
                         </div>
                         <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="ztp">
+                            <label class="form-check-label" for="ztp">
+                                Stage for ZTP?
+                            </label>
+                            <small class="form-text text-muted">If this device checks in with no contact ID, use the ID noted above.</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="gitlabToken">GitLab Personal Token</label>
                             <input type="password" class="form-control" id="gitlabToken" placeholder="Token" value="yCPx74vUn5oFierEnQfa" required>
                             <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
                         </div>
                         <button type="button" id="gitlabSubmit" onclick="gitlabPush()" class="btn btn-secondary">Push</button>
+                        <button type="button" id="gitlabClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </form>
                 </div>
                 <div class="card-footer" id="git_console_div" style="display:none">
@@ -178,8 +189,9 @@
             var serialNumber = document.getElementById("serialNumber").value;
             var device_config = document.getElementById("complete").value;
             var repo_uri = document.getElementById("configRepo").value;
+            var ztp = document.getElementById("ztp").checked;
 
-            socket.emit('gitlabPush', {'repo_uri': repo_uri, 'clientID': clientID, 'repo_auth_token': repo_auth_token, 'serialNumber': serialNumber, 'device_config': device_config});
+            socket.emit('gitlabPush', {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'repo_auth_token': repo_auth_token, 'serialNumber': serialNumber, 'device_config': device_config});
             }
 
             function toggle_render_button() {
