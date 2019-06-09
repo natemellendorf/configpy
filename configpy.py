@@ -307,6 +307,7 @@ def gitlabPush(data):
                                 rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
                                 rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
                                 rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
+                                rd.hmset(data['serialNumber'], {'device_sn': data["serialNumber"]})
 
                             new_data['event_time'] = current_time()
                             new_data['event'] = returned.text
@@ -324,6 +325,7 @@ def gitlabPush(data):
                                     rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
                                     rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
                                     rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
+                                    rd.hmset(data['serialNumber'], {'device_sn': data["serialNumber"]})
                                     socketio.emit('git_console', new_data)
 
                             except Exception as e:

@@ -89,13 +89,12 @@
 
                 for (var key in obj){
                 const object = obj[key]
-                // console.log(object);
+                // console.log(key);
 
                 var hostname = object['hostname'];
-                var serialnumber = object['device_sn'];
                 var config = object['config'];
                 var srx_cluster = object['srx_cluster'];
-                var device_sn = object['device_sn'];
+                var device_sn = key;
                 var last_seen = object['Last seen'];
 
                 // console.log('-------');
@@ -116,8 +115,8 @@
                 '<li class="list-group-item d-flex justify-content-between align-items-center">' + hostname +
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
-                '<a href="hub/device/' + serialnumber + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
-                '<button id="' + serialnumber + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
+                '<a href="hub/device/' + device_sn + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
+                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
                 '</li>';
 
                 } else
@@ -127,8 +126,8 @@
                 '<li class="list-group-item d-flex justify-content-between align-items-center">' + hostname +
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
-                '<a href="hub/device/' + serialnumber + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
-                '<button id="' + serialnumber + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
+                '<a href="hub/device/' + device_sn + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
+                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
                 '</li>';
 
                 }
