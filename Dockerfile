@@ -10,5 +10,5 @@ RUN python3 -m pip install --upgrade pip
 RUN pip3 install -r requirements.txt
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
-EXPOSE 5000
+EXPOSE 80
 ENTRYPOINT python3 configpy.py

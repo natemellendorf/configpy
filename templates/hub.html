@@ -2,7 +2,7 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 {% block app_content %}
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mr-auto rounded-top">
   <a class="navbar-brand" href="#">Hub</a>
   <div class="" id="navbarNavAltMarkup">
     <div class="navbar-nav">
@@ -15,7 +15,6 @@
 </div>
 
 <div id="hub_event" style="display:none">
-
 </div>
 
 <p id="hub_spacer" style="display:none"></p>
@@ -31,7 +30,7 @@
                 <div class="card-body">
                   <form>
                     <div class="form-group">
-                    <textarea id="deviceDetails" class="form-control" rows="15" disabled></textarea>
+                    <textarea id="deviceDetails" class="form-control" rows="15" disabled>Loading...</textarea>
                     </div>
                     </form>
                   <button type="button" id="close"  class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -116,7 +115,7 @@
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
                 '<a href="hub/device/' + device_sn + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
-                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
+                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Details</button>'+
                 '</li>';
 
                 } else
@@ -127,7 +126,7 @@
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
                 '<a href="hub/device/' + device_sn + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
-                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
+                '<button id="' + device_sn + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Details</button>'+
                 '</li>';
 
                 }
@@ -140,7 +139,7 @@
                 div.style.display = "block";
 
                 $('#hub_event').html('' +
-                '<div class="card">' +
+                '<div class="card rounded-0">' +
                 '<ul class="list-group list-group-flush">' +
                 card_event +
                 '</ul>' +
@@ -156,12 +155,10 @@
                 }
 
                 $('#hub').html('' +
-                '<div class="card">' +
-                '<div class="card-body">' +
-                '<div class="list-group">' +
+                '<div class="card rounded-0">' +
+                '<ul class="list-group list-group-flush">' +
                 card +
-                '</div>' +
-                '</div>' +
+                '</ul>' +
                 '</div>');
 
                 //document.getElementById("hub").innerHTML = txt

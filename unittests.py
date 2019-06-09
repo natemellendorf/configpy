@@ -16,7 +16,7 @@ class TestUM(unittest.TestCase):
         self.assertTrue(device_add)
 
     def test_verify_api(self):
-        r = requests.get('http://127.0.0.1:8080/hub/device/ut_12345')
+        r = requests.get('http://127.0.0.1/hub/device/ut_12345')
         retuned = r.json()
         self.assertEqual(retuned['hostname'], 'unittest-device-isp1')
 
