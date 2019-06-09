@@ -15,11 +15,31 @@
 </div>
 
 <div id="hub_event" style="display:none">
+
 </div>
 
 <p id="hub_spacer" style="display:none"></p>
 
 <div id="hub" style="display:block">
+</div>
+
+<div class="modal fade deviceEdit" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="card">
+                <h5 id="details" class="card-header">Details</h5>
+                <div class="card-body">
+                  <form>
+                    <div class="form-group">
+                    <textarea id="deviceDetails" class="form-control" rows="15" disabled></textarea>
+                    </div>
+                    </form>
+                  <button type="button" id="close"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" id="deleteDevice" onclick="" class="btn btn-outline-secondary" data-dismiss="modal">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript" charset="utf-8">
@@ -31,10 +51,37 @@
 
             // SOCKET
 
+            function getDevice(serial) {
+            // console.log(serial);
+            socket.emit('getDevice', {"device": serial});
+            };
+
+            socket.on('foundDevice', function(msg) {
+            str_msg = JSON.stringify(msg, null, 4);
+            $("#deviceDetails").val(str_msg);
+
+            if (typeof msg['device_sn'] != "undefined") {
+            device_sn = msg['device_sn'];
+            document.getElementById('deleteDevice').setAttribute( "onClick", "deleteDevice(device_sn)" );
+            $('#details').html('Details for ' + device_sn);
+            };
+            });
+
+            function deleteDevice(device) {
+            // console.log('Requesting device ' + device + 'be deleted');
+            socket.emit('deleteDevice', {'deleteDevice': device});
+            };
+
+            socket.on('deletedDevice', function(msg) {
+            str_msg = JSON.stringify(msg, null, 4);
+            // console.log(str_msg);
+            });
+
+
             socket.emit('dsc', {'event': 'Get devices'});
 
             socket.on('dsc', function(msg) {
-                //console.log(msg);
+                // console.log(msg);
 
                 var card = "";
                 var card_event = "";
@@ -42,7 +89,7 @@
 
                 for (var key in obj){
                 const object = obj[key]
-                console.log(object);
+                // console.log(object);
 
                 var hostname = object['hostname'];
                 var serialnumber = object['device_sn'];
@@ -51,9 +98,9 @@
                 var device_sn = object['device_sn'];
                 var last_seen = object['Last seen'];
 
-                console.log('-------');
+                // console.log('-------');
 
-                var badge = "badge-secondary";
+                var badge = "badge-light";
 
                 if (srx_cluster){
                 var cluster_stat = "cluster";
@@ -70,6 +117,7 @@
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
                 '<a href="hub/device/' + serialnumber + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
+                '<button id="' + serialnumber + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
                 '</li>';
 
                 } else
@@ -80,6 +128,7 @@
                 '<span class="badge badge-light">' + cluster_stat + '</span>'+
                 '<span class="badge badge-light">' + device_sn + '</span>'+
                 '<a href="hub/device/' + serialnumber + '" class="badge ' + badge + '" target="_blank">' + config + '</a>'+
+                '<button id="' + serialnumber + '" type="button" class="btn btn-light btn-sm" data-toggle="modal" onclick="getDevice(this.id)" data-backdrop="static" data-target=".deviceEdit">Edit</button>'+
                 '</li>';
 
                 }
@@ -139,5 +188,7 @@
 
             // END
 </script>
+
+
 
 {% endblock %}

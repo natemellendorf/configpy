@@ -219,6 +219,25 @@ def test_connect(data):
     data['event_time'] = time
     socketio.emit('console', data)
 
+@socketio.on('getDevice')
+def getDevice(data):
+    #print(data)
+    if data['device']:
+        values = r.hgetall(data['device'])
+        device_values = {}
+        #print(values)
+        for x, y in values.items():
+            device_values[x.decode("utf-8")] = y.decode("utf-8")
+
+        socketio.emit('foundDevice', device_values)
+
+@socketio.on('deleteDevice')
+def deleteDevice(data):
+    #print(data)
+    if data['deleteDevice']:
+        r.delete(data['deleteDevice'])
+        socketio.emit('deletedDevice', f'Removed: {data["deleteDevice"]}')
+
 
 @socketio.on('dsc')
 def dsc(data):
@@ -340,5 +359,5 @@ def disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port=8080, debug=True)
+    socketio.run(app, host="0.0.0.0", port=80, debug=True)
 
