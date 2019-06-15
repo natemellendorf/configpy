@@ -103,7 +103,8 @@ def dbcheck_loop():
     with app.test_request_context('/'):
         while True:
             dbcheck_logic(data, loopcheck='yes')
-            time.sleep(1)
+            # Loop delay
+            time.sleep(5)
 
 
 @app.route('/hub', methods=['GET', 'POST'])
