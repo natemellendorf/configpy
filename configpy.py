@@ -237,6 +237,7 @@ def deleteDevice(data):
     #print(data)
     if data['deleteDevice']:
         r.delete(data['deleteDevice'])
+        socketio.emit('dsc', 'Delete device refresh')
         socketio.emit('deletedDevice', f'Removed: {data["deleteDevice"]}')
 
 
