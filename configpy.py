@@ -146,9 +146,7 @@ def process():
     Note: This whole route needs to be rewritten.
     Today, it takes untrusted and unverified data and saves it to the server.
     Although this isn't a big deal if your source is trusted, I would consider it a very bad practice.
-    If it absolutly has to save data to the server (unlikely), it should be run in a container to isolate it.
-    However, I'll consider the below good enough for personal project work.
-    - Nate Mellendorf
+    If it absolutely has to save data to the server (doubt), it should be run in a container to isolate it.
     '''
     received = request.get_json()
     r = requests.get(received["template"])
@@ -177,20 +175,18 @@ def process():
                         file.write(r.text)
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-    # Load data from YAML into Python dictionary
-    answerfile = yaml.load(received["answers"])
-
-    # Load Jinja2 template
-    template = env.get_template("render.tmp")
-
-    # Render the template
+    
     try:
+        # Load data from YAML into Python dictionary
+        answerfile = yaml.load(received["answers"])
+        # Load Jinja2 template
+        template = env.get_template("render.tmp")
+        # Render the template
         rendered_template = template.render(answerfile)
 
     except Exception as e:
+        # If errors, return them to UI.
         return str(e)
-
-    # print(rendered_template)
 
     return str(rendered_template)
 
