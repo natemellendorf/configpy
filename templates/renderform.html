@@ -10,13 +10,13 @@
                 <h5 class="card-title">Jinja/YAML Render</h5>
 
                 <div class="form-group">
-                    <label for="changerepo">Link to GitHub repo.</label>
+                    <label for="changerepo">Link to repo.</label>
                     <input type="text" class="form-control" id="changerepo" aria-describedby="repo_help" oninput="button_change()" placeholder="https://github.com/user/repo" value="">
                     <small>Please provide the URL to your repo</small>
                 </div>
 
                     <div id="repo_help" class="card-body">
-                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Launch Demo</button>
+                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Connect</button>
                     </div>
 
                     <div id="console_div" class="form-group" style="display:none">
@@ -115,7 +115,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label for="node0serialNumber">Node0 - Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" id="node0serialNumber" placeholder="" required>
+                                <input type="text" class="form-control form-control-sm" id="node0serialNumber" placeholder="">
                                 <small class="form-text text-muted">Serial number of the primary node</small>
                             </div>
                             <div class="form-group col-md-6">
@@ -127,11 +127,18 @@
 
                         <div class="form-group">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="ztp">
+                            <input class="form-check-input" type="checkbox" id="ztp" checked>
                             <label class="form-check-label" for="ztp">
-                                Stage for ZTP?
+                                Stage for ZTP
                             </label>
-                            <small class="form-text text-muted">If this device checks in with no contact ID, use the ID noted above.</small>
+                            <small class="form-text text-muted">If the device checks in with no contact ID, use the ID provided above.</small>
+                            </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cluster" checked>
+                            <label class="form-check-label" for="cluster">
+                                Enable clustering
+                            </label>
+                            <small class="form-text text-muted">When checked, the SRX will enable clustering and reboot.</small>
                             </div>
                         </div>
 
@@ -203,7 +210,8 @@
             var device_config = document.getElementById("complete").value;
             var repo_uri = document.getElementById("configRepo").value;
             var ztp = document.getElementById("ztp").checked;
-            var dict = {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'repo_auth_token': repo_auth_token, 'serialNumber': {'node0serialNumber': node0serialNumber, 'node1serialNumber': node1serialNumber}, 'device_config': device_config};
+            var cluster = document.getElementById("cluster").checked;
+            var dict = {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'cluster': cluster, 'repo_auth_token': repo_auth_token, 'serialNumber': {'node0serialNumber': node0serialNumber, 'node1serialNumber': node1serialNumber}, 'device_config': device_config};
             //alert(JSON.stringify(dict));
 
             socket.emit('gitlabPush', JSON.stringify(dict));

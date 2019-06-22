@@ -1,0 +1,27 @@
+version 1.0;
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+import "../import/junos.xsl";
+ 
+var $arguments = {
+    <argument> {
+        <name> "node-id";
+        <description> "Cluster Node ID";
+    }
+}
+param $node-id;
+match / {
+    <op-script-results> {
+        var $cluster = {
+            <command> 'set chassis cluster cluster-id 100 node ' _  $node-id _ ' reboot';
+        }
+        var $result = jcs:invoke($cluster);
+        <output> {
+            expr "Clustering Chassis cluster-id 100 node id: ";
+            expr $node-id;
+            expr "";
+            expr "";
+        }
+    }
+}

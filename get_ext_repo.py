@@ -3,7 +3,7 @@ from pprint import pprint
 import redis
 import json
 from datetime import datetime
-
+from config_snips import cluster_config
 
 def current_time():
     current_time = str(datetime.now().time())
@@ -24,6 +24,7 @@ def pushtorepo(**kwargs):
     REDIS_URI = kwargs["REDIS_URI"]
     data = kwargs["data"]
     serialNumber = kwargs["serialNumber"]
+    node = kwargs["node"]
 
     new_data = {}
 
@@ -43,8 +44,19 @@ def pushtorepo(**kwargs):
         'cache-control': "no-cache"
     }
 
-    payload = {"branch": "master", "content": data['device_config'], "commit_message": "new commit"}
+    nodeconfig = data['device_config']
 
+    if data['cluster']:
+        print('Clustering requested...')
+        cluster = '0'
+        if node == 'node0serialNumber':
+            cluster = cluster_config('0')
+        elif node == 'node1serialNumber':
+            cluster = cluster_config('1')
+
+        nodeconfig = (data['device_config'] + cluster)
+
+    payload = {"branch": "master", "content": nodeconfig, "commit_message": "new commit"}
     querystring = {"per_page": "100"}
 
     try:

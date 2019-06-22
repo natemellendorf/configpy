@@ -104,7 +104,7 @@ def dbcheck_loop():
         while True:
             dbcheck_logic(data, loopcheck='yes')
             # Loop delay
-            time.sleep(5)
+            time.sleep(1)
 
 
 @app.route('/hub', methods=['GET', 'POST'])
@@ -268,10 +268,13 @@ def gitlabPush(data):
         for node, serialNumber in data['serialNumber'].items():
             if serialNumber:
                 print(f'Pushing node: {node} - serial: {serialNumber}')
-                new_data = pushtorepo(data=data, REDIS_URI=REDIS_URI, serialNumber=serialNumber)
+                new_data = pushtorepo(data=data, REDIS_URI=REDIS_URI, serialNumber=serialNumber, node=node)
                 socketio.emit('git_console', new_data)
             else:
-                print(f'no serial provided for {node}...')
+                new_data = dict()
+                new_data['event_time'] = current_time()
+                new_data['event'] = f'no serial provided for {node}...'
+                socketio.emit('git_console', new_data)
 
     else:
         new_data = dict()
