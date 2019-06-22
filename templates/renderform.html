@@ -98,12 +98,10 @@
                         <div class="form-group">
                             <label for="configRepo">Remote Repo</label>
                             <input type="text" class="form-control form-control-sm" id="configRepo" aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs" required>
-                            <small id="configRepooHelp" class="form-text text-muted">URL to remote repository.</small>
                         </div>
                         <div class="form-group">
                             <label for="gitlabToken">Repo API Token</label>
                             <input type="password" class="form-control form-control-sm" id="gitlabToken" placeholder="Token" value="rHpKJCVzx565sHR48CUb" required>
-                            <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
                         </div>
 
                         <div class="form-group">
@@ -111,6 +109,8 @@
                             <input type="text" class="form-control form-control-sm" id="clientID" aria-describedby="Contact ID" placeholder="" value="" required>
                             <small id="cidHelp" class="form-text text-muted">Should be a number, and will be the directory used to store the config.</small>
                         </div>
+
+                        <p class="h5">SRX <small class="text-muted">Firewalls</small></p>
 
                         <div class="form-row">
                             <div class="form-group col-md-6">
