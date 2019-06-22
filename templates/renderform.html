@@ -77,7 +77,7 @@
     <div class="card">
         <div class="card-header">
             <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
-            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".gitlab">Push to GitLab</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".gitlab">Push</button>
         </div>
         <div class="card-body">
             <div class="row">
@@ -92,24 +92,39 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="card">
-                <h5 class="card-header">Push to GitLab</h5>
+                <h5 class="card-header">Push to Repo</h5>
                 <div class="card-body">
                     <form>
                         <div class="form-group">
-                            <label for="configRepo">Remote Repository</label>
-                            <input type="text" class="form-control" id="configRepo" aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs" required>
+                            <label for="configRepo">Remote Repo</label>
+                            <input type="text" class="form-control form-control-sm" id="configRepo" aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs" required>
                             <small id="configRepooHelp" class="form-text text-muted">URL to remote repository.</small>
                         </div>
                         <div class="form-group">
+                            <label for="gitlabToken">Repo API Token</label>
+                            <input type="password" class="form-control form-control-sm" id="gitlabToken" placeholder="Token" value="rHpKJCVzx565sHR48CUb" required>
+                            <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="clientID">SNMP Contact ID</label>
-                            <input type="text" class="form-control" id="clientID" aria-describedby="Contact ID" placeholder="12345" value="23" required>
+                            <input type="text" class="form-control form-control-sm" id="clientID" aria-describedby="Contact ID" placeholder="12345" value="" required>
                             <small id="cidHelp" class="form-text text-muted">Should be a number, and will be the directory used to store the config.</small>
                         </div>
-                        <div class="form-group">
-                            <label for="serialNumber">Device Serial Number</label>
-                            <input type="text" class="form-control" id="serialNumber" placeholder="ABCD12345" value="CV1417AF0163" required>
-                            <small id="serialHelp" class="form-text text-muted">Serial number for the device that maps to this config file.</small>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="node0serialNumber">Node0 - Serial Number</label>
+                                <input type="text" class="form-control form-control-sm" id="node0serialNumber" placeholder="" required>
+                                <small class="form-text text-muted">Serial number of the primary node</small>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="node1serialNumber">Node1 - Serial Number</label>
+                                <input type="text" class="form-control form-control-sm" id="node1serialNumber" placeholder="">
+                                <small class="form-text text-muted">Serial number of the secondary node</small>
+                            </div>
                         </div>
+
                         <div class="form-group">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="ztp">
@@ -119,11 +134,7 @@
                             <small class="form-text text-muted">If this device checks in with no contact ID, use the ID noted above.</small>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="gitlabToken">GitLab Personal Token</label>
-                            <input type="password" class="form-control" id="gitlabToken" placeholder="Token" value="gzEcmt3P4wrMhAR8WVuW" required>
-                            <small id="tokenHelp" class="form-text text-muted">Your personal API token from GitLab.</small>
-                        </div>
+
                         <button type="button" id="gitlabSubmit" onclick="gitlabPush()" class="btn btn-secondary">Push</button>
                         <button type="button" id="gitlabClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </form>
@@ -184,14 +195,18 @@
             }
 
             function gitlabPush() {
+            // Gather data needed to push to repo
             var clientID = document.getElementById("clientID").value;
             var repo_auth_token = document.getElementById("gitlabToken").value;
-            var serialNumber = document.getElementById("serialNumber").value;
+            var node0serialNumber = document.getElementById("node0serialNumber").value;
+            var node1serialNumber = document.getElementById("node1serialNumber").value;
             var device_config = document.getElementById("complete").value;
             var repo_uri = document.getElementById("configRepo").value;
             var ztp = document.getElementById("ztp").checked;
+            var dict = {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'repo_auth_token': repo_auth_token, 'serialNumber': {'node0serialNumber': node0serialNumber, 'node1serialNumber': node1serialNumber}, 'device_config': device_config};
+            //alert(JSON.stringify(dict));
 
-            socket.emit('gitlabPush', {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'repo_auth_token': repo_auth_token, 'serialNumber': serialNumber, 'device_config': device_config});
+            socket.emit('gitlabPush', JSON.stringify(dict));
             }
 
             function toggle_render_button() {

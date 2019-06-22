@@ -4,7 +4,7 @@ from jinja2 import Environment, FileSystemLoader, meta
 from flask_bootstrap import Bootstrap
 import yaml, json
 from datetime import datetime
-from get_ext_repo import get_ext_repo
+from get_ext_repo import get_ext_repo, pushtorepo
 from flask_socketio import SocketIO
 import os
 import redis
@@ -175,7 +175,7 @@ def process():
                         file.write(r.text)
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-    
+
     try:
         # Load data from YAML into Python dictionary
         answerfile = yaml.load(received["answers"])
@@ -257,9 +257,7 @@ def dsc(data):
 
 @socketio.on('gitlabPush')
 def gitlabPush(data):
-
-    #print(data)
-    new_data = {}
+    data = json.loads(data)
 
     if data['clientID'] \
             and data['repo_auth_token'] \
@@ -267,86 +265,20 @@ def gitlabPush(data):
             and data['device_config'] \
             and data['repo_uri']:
 
-        words = data["repo_uri"].split("/")
-        protocol = words[0]
-        domain = words[2]
-        gitlab_url = '{0}//{1}'.format(protocol, domain)
-        findall = '{0}/api/v4/projects/'.format(gitlab_url)
-
-        headers = {
-            'PRIVATE-TOKEN': "{0}".format(data['repo_auth_token']),
-            'Content-Type': "application/json",
-            'User-Agent': "ConfigPy",
-            'Accept': "*/*",
-            'Cache-Control': "no-cache",
-            'Connection': "keep-alive",
-            'cache-control': "no-cache"
-        }
-
-        payload = {"branch": "master", "content": data['device_config'], "commit_message": "new commit"}
-
-        querystring = {"per_page": "100"}
-
-        try:
-            r = requests.get(findall, headers=headers, params=querystring, timeout=5)
-            returned = r.json()
-
-            for x in returned:
-
-                if x['path_with_namespace'] in data["repo_uri"]:
-                    new_file_url = f'{findall}{x["id"]}/repository/files/{data["clientID"]}%2F{data["serialNumber"]}%2Eset'
-
-                    try:
-                        returned = requests.post(new_file_url, data=json.dumps(payload), headers=headers, timeout=5)
-
-                        if returned.status_code == 201:
-                            if data['ztp']:
-                                rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
-                                rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
-                                rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
-                                rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
-                                rd.hmset(data['serialNumber'], {'device_sn': data["serialNumber"]})
-
-                            new_data['event_time'] = current_time()
-                            new_data['event'] = returned.text
-                            socketio.emit('git_console', new_data)
-
-                        elif returned.status_code == 400 and 'this name already exists' in returned.text:
-
-                            try:
-                                returned = requests.put(new_file_url, data=json.dumps(payload), headers=headers, timeout=5)
-                                new_data['event_time'] = current_time()
-                                new_data['event'] = returned.text
-
-                                if data['ztp']:
-                                    rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
-                                    rd.hmset(data['serialNumber'], {'ztp': str(data['clientID'])})
-                                    rd.hmset(data['serialNumber'], {'hostname': f'{data["serialNumber"]} - [ZTP]'})
-                                    rd.hmset(data['serialNumber'], {'config': 'awaiting device'})
-                                    rd.hmset(data['serialNumber'], {'device_sn': data["serialNumber"]})
-                                    socketio.emit('git_console', new_data)
-
-                            except Exception as e:
-                                error = static_error(e)
-                                socketio.emit('git_console', error)
-                        else:
-                            new_data['event_time'] = current_time()
-                            new_data['event'] = returned.text
-                            socketio.emit('git_console', new_data)
-                            raise Exception(f'{returned.text}')
-
-                    except Exception as e:
-                        error = static_error(e)
-                        socketio.emit('git_console', error)
-
-        except Exception as e:
-            error = static_error(e)
-            socketio.emit('git_console', error)
+        for node, serialNumber in data['serialNumber'].items():
+            if serialNumber:
+                print(f'Pushing node: {node} - serial: {serialNumber}')
+                new_data = pushtorepo(data=data, REDIS_URI=REDIS_URI, serialNumber=serialNumber)
+                socketio.emit('git_console', new_data)
+            else:
+                print(f'no serial provided for {node}...')
 
     else:
+        new_data = dict()
         new_data['event_time'] = current_time()
         new_data['event'] = 'The form submitted is missing values.'
         socketio.emit('git_console', new_data)
+
 
 @socketio.on('connect')
 def connect():
