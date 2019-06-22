@@ -21,6 +21,7 @@ eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config['secret'] = 's;ldi3r#$R@lkjedf$'
+app.config['slax_host'] = '10.0.0.204'
 bootstrap = Bootstrap(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
@@ -273,7 +274,7 @@ def gitlabPush(data):
             else:
                 new_data = dict()
                 new_data['event_time'] = current_time()
-                new_data['event'] = f'no serial provided for {node}...'
+                new_data['event'] = f'Ignored: {node}'
                 socketio.emit('git_console', new_data)
 
     else:
