@@ -73,11 +73,17 @@ def pushtorepo(**kwargs):
 
                     if returned.status_code == 201:
                         if data['ztp']:
+
                             rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
                             rd.hmset(serialNumber, {'ztp': str(data['clientID'])})
                             rd.hmset(serialNumber, {'hostname': f'{serialNumber} - [ZTP]'})
                             rd.hmset(serialNumber, {'config': 'awaiting device'})
                             rd.hmset(serialNumber, {'device_sn': f'{serialNumber}'})
+
+                            url_list = ['edit', 'blob']
+                            for item in url_list:
+                                url = f'{data["repo_uri"]}/{item}/master/{str(data["clientID"])}/{serialNumber}.set'
+                                rd.hmset(serialNumber, {f'device_repo_{item}': f'{url}'})
 
                         new_data['event_time'] = current_time()
                         new_data['event'] = returned.text
@@ -98,6 +104,16 @@ def pushtorepo(**kwargs):
                                 rd.hmset(serialNumber, {'config': 'awaiting device'})
                                 rd.hmset(serialNumber, {'device_sn': f'{serialNumber}'})
 
+                                url_list = ['edit', 'blob']
+                                for item in url_list:
+                                    url = f'{data["repo_uri"]}/{item}/master/{str(data["clientID"])}/{serialNumber}.set'
+                                    rd.hmset(serialNumber, {f'device_repo_{item}': f'{url}'})
+
+                                return new_data
+
+                            else:
+                                new_data['event_time'] = current_time()
+                                new_data['event'] = returned.text
                                 return new_data
 
                         except Exception as e:
@@ -106,7 +122,6 @@ def pushtorepo(**kwargs):
                     else:
                         new_data['event_time'] = current_time()
                         new_data['event'] = returned.text
-                        #raise Exception(f'{returned.text}')
                         return new_data
 
                 except Exception as e:
