@@ -33,8 +33,10 @@
                     <textarea id="deviceDetails" class="form-control" rows="15" disabled>Loading...</textarea>
                     </div>
                     </form>
-                  <button type="button" id="close"  class="btn btn-secondary" data-dismiss="modal">Close</button>
-                  <button type="button" id="deleteDevice" onclick="" class="btn btn-outline-secondary" data-dismiss="modal">Delete</button>
+                    <a id="viewDevice" href="" target="_blank"><button type="button" class="btn btn-secondary">View</button></a>
+                    <a id="editDevice" href="" target="_blank"><button type="button" class="btn btn-secondary">Edit</button></a>
+                    <button type="button" id="deleteDevice" onclick="" class="btn btn-outline-secondary" data-dismiss="modal">Clear DB</button>
+                    <button type="button" id="close"  class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -61,7 +63,13 @@
 
             if (typeof msg['device_sn'] != "undefined") {
             device_sn = msg['device_sn'];
+            device_repo_blob = msg['device_repo_blob'];
+            device_repo_edit = msg['device_repo_edit'];
+
+            document.getElementById('viewDevice').setAttribute( "href", device_repo_blob );
+            document.getElementById('editDevice').setAttribute( "href", device_repo_edit );
             document.getElementById('deleteDevice').setAttribute( "onClick", "deleteDevice(device_sn)" );
+
             $('#details').html('Details for ' + device_sn);
             };
             });
