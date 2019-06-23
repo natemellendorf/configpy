@@ -1,1 +1,1 @@
-clustering_slax = 'op url http://8.8.8.8/static/slax/chassis-cluster.slax'
+clustering_slax = 'http://8.8.8.8/static/slax/chassis-cluster.slax'
