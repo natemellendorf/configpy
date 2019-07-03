@@ -34,6 +34,8 @@ def pushtorepo(**kwargs):
     gitlab_url = '{0}//{1}'.format(protocol, domain)
     findall = '{0}/api/v4/projects/'.format(gitlab_url)
 
+    rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
+
     headers = {
         'PRIVATE-TOKEN': "{0}".format(data['repo_auth_token']),
         'Content-Type': "application/json",
@@ -46,13 +48,15 @@ def pushtorepo(**kwargs):
 
     nodeconfig = data['device_config']
 
+    pprint(data['cluster'])
+
     if data['cluster']:
         print('Clustering requested...')
-        cluster = '0'
+        cluster = ''
         if node == 'node0serialNumber':
-            cluster = cluster_config('0')
+            rd.hmset(serialNumber, {'ztp_cluster_node': '0'})
         elif node == 'node1serialNumber':
-            cluster = cluster_config('1')
+            rd.hmset(serialNumber, {'ztp_cluster_node': '1'})
 
         nodeconfig = (data['device_config'] + cluster)
 
@@ -74,7 +78,6 @@ def pushtorepo(**kwargs):
                     if returned.status_code == 201:
                         if data['ztp']:
 
-                            rd = redis.Redis(host=REDIS_URI, port=6379, db=0)
                             rd.hmset(serialNumber, {'ztp': str(data['clientID'])})
                             rd.hmset(serialNumber, {'hostname': f'{serialNumber} - [ZTP]'})
                             rd.hmset(serialNumber, {'config': 'awaiting device'})
