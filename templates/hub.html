@@ -2,16 +2,21 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 {% block app_content %}
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mr-auto rounded-top">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark justify-content-between rounded-top">
   <a class="navbar-brand" href="#">Hub</a>
+    <a id="last_poll" class="nav-item nav-link disabled" tabindex="-1" aria-disabled="true">Polled: </a>
   <div class="" id="navbarNavAltMarkup">
     <div class="navbar-nav">
-      <a id="last_poll" class="nav-item nav-link disabled" tabindex="-1" aria-disabled="true">Polled: </a>
+        <button type="button" id="toggleConsole" onclick="display_hub_console()" class="btn btn-sm btn-outline-secondary">View Logs</button>
     </div>
   </div>
 </nav>
 
 <div id="alert" class="alert alert-danger" role="alert" style="display:none">
+</div>
+
+<div id="hub_console_div" class="form-group" style="display:none">
+    <textarea class="form-control form-control-sm" rows="20" id="hub_console" disabled>...</textarea>
 </div>
 
 <div id="hub_event" style="display:none">
@@ -45,6 +50,16 @@
 
 <script type="text/javascript" charset="utf-8">
 
+            function display_hub_console() {
+            var div = document.getElementById("hub_console_div");
+
+            if ( div.style.display === "none" ){
+            div.style.display = "block";
+            } else {
+            div.style.display = "none";
+            }
+            }
+
             var socket = io.connect('http://' + document.domain + ':' + location.port);
             console.log('http://' + document.domain + ':' + location.port);
             socket.on('connect', function() {
@@ -56,6 +71,14 @@
             // console.log(serial);
             socket.emit('getDevice', {"device": serial});
             };
+
+            socket.on('hub_console', function(msg) {
+                display_hub_console();
+                console.log(msg);
+                var hub_console = document.getElementById("hub_console");
+                hub_console.value += ('[' + msg['event_time'] + ']: ' + msg['event'] + '\n');
+                hub_console.scrollTop = hub_console.scrollHeight;
+            });
 
             socket.on('foundDevice', function(msg) {
             str_msg = JSON.stringify(msg, null, 4);

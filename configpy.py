@@ -26,7 +26,7 @@ bootstrap = Bootstrap(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
-socketio = SocketIO(app)
+socketio = SocketIO(app, message_queue='redis://redis')
 
 
 if not os.path.exists('logs'):
@@ -216,6 +216,7 @@ def test_connect(data):
     time = no_sec.pop(0)
     data['event_time'] = time
     socketio.emit('console', data)
+
 
 @socketio.on('getDevice')
 def getDevice(data):
