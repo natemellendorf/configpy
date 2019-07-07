@@ -17,7 +17,7 @@ It leverages Docker, Flask, SocketIO, Redis, PyEZ, Paramiko, and GitLab to:
 
 ## Demos:
 #### Template Rendering:
-![ConfigPy Demo_1](demo/ConfigPy.gif)
+![ConfigPy Demo_1](demo/ConfigPy_render.gif)
 
 #### Device Config Sync
 ![ConfigPy Demo_2](demo/ConfigPy_demo.gif)
