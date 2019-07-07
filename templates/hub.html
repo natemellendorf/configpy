@@ -50,6 +50,20 @@
 
 <script type="text/javascript" charset="utf-8">
 
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+            console.log('http://' + document.domain + ':' + location.port);
+            socket.on('connect', function() {
+            });
+
+            // SOCKET
+
+            socket.on('hub_console', function(msg) {
+                console.log(msg);
+                var hub_console = document.getElementById("hub_console");
+                hub_console.value += ('[' + msg['event_time'] + ']: ' + msg['event'] + '\n');
+                hub_console.scrollTop = hub_console.scrollHeight;
+            });
+
             function display_hub_console() {
             var div = document.getElementById("hub_console_div");
 
@@ -60,25 +74,10 @@
             }
             }
 
-            var socket = io.connect('http://' + document.domain + ':' + location.port);
-            console.log('http://' + document.domain + ':' + location.port);
-            socket.on('connect', function() {
-            });
-
-            // SOCKET
-
             function getDevice(serial) {
             // console.log(serial);
             socket.emit('getDevice', {"device": serial});
             };
-
-            socket.on('hub_console', function(msg) {
-                display_hub_console();
-                console.log(msg);
-                var hub_console = document.getElementById("hub_console");
-                hub_console.value += ('[' + msg['event_time'] + ']: ' + msg['event'] + '\n');
-                hub_console.scrollTop = hub_console.scrollHeight;
-            });
 
             socket.on('foundDevice', function(msg) {
             str_msg = JSON.stringify(msg, null, 4);

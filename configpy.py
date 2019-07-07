@@ -218,6 +218,11 @@ def test_connect(data):
     socketio.emit('console', data)
 
 
+@socketio.on('hub_console')
+def hub_console(data):
+    socketio.emit('hub_console', data)
+
+
 @socketio.on('getDevice')
 def getDevice(data):
     #print(data)
