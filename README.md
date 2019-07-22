@@ -28,9 +28,13 @@ It introduced me to every dependancy that it leverages. Python (Flask, PyEZ, Req
 In it's current state, I would not recommend this project be placed outside of a lab environment.
 
 ### Deployment:
-Configpy can be deployed on its own for basic template rendering.
-If you want to leverage additional features noted above, then you'll need to update and deploy the containers below.
-FIXME: I should leverage docker compose for this.
+#### Automatic
+[Please leverage this compose file to launch ConfigPy](../master/docker-compose.yml)
+```
+#docker swarm init
+docker stack deploy -c Docker-Compose.yml configpy
+```
+#### Manual
 ```
 docker run --name redis \
   -d --restart always \
