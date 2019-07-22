@@ -8,6 +8,10 @@ services:
     image: redis
     ports:
       - "6379:6379"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
     networks:
       - production
       
@@ -16,7 +20,7 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
     ports:
       - "80:80"
     networks:
@@ -24,6 +28,7 @@ services:
     environment:
       - REDIS_URI=redis
     volumes:
+       # Optional: Can be used to map a directory containing firmware to configpy for HTTP access from configpy-node.
        - "c:/dockerstorage/configpy/firmware:/home/devops/configpy/static/firmware"
     depends_on:
       - redis
@@ -33,7 +38,7 @@ services:
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
     ports:
       - "9000:9000"
     networks:
@@ -41,14 +46,53 @@ services:
     depends_on:
       - redis
       - configpy
+      
+      
+    # - - - - - - - - - - - - - - -
+    # ConfigPy-Node commands below:
+    # - - - - - - - - - - - - - - -
+    # -user
+    #    Username used to authenticate to each Junos device.
+    #
+    # -password
+    #    Password for the username provided above.
+    #
+    # -configpy_url
+    #    URL to configpy container. 
+    #    Required for websocket to function.
+    #
+    # -redis_url
+    #    URL to Redis instance.
+    #    If you're using this compose file, leave this as redis
+    #
+    # -repo_uri
+    #    URL to GitLab repository that holds your Junos .set config files.
+    #
+    # -repo_auth_token
+    #    GitLab token with API access for your user.
+    #
+    # -software_location
+    #    URL to public web directory which contains the firmware image below.
+    #    I tend to use configpy for this.
+    #
+    # -srx_firmware
+    #    Full filename for your SRX firmware, which is located in the software_location. 
+    #    Must end in .tgz
+    #    Must contain firmware version in the name.
+    # 
+    # -srx_firmware_checksum
+    #    MD5 checksum for the srx_firmware above. 
+    #    Used to validate the firmware before install.
+      
     command: |
         -user ztp 
         -password P@ssw0rd 
-        -configpy_url http://10.0.0.204:80 
+        -configpy_url http://configpy
         -redis_url redis 
         -repo_uri http://gitlab:8080/networking/configs 
         -repo_auth_token pBip1GDe1zRrXxsjR-Px 
         -software_location http://10.0.0.204/static/firmware/ 
         -srx_firmware junos-srxsme-15.1X49-D170.4-domestic.tgz 
         -srx_firmware_checksum 8e8bd9fa8cccbb91144ac8a58d1192dc
+        
 
