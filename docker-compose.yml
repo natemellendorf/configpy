@@ -1,0 +1,54 @@
+version: "3"
+
+networks:
+  production:
+  
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - production
+      
+  configpy:
+    image: natemellendorf/configpy:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "80:80"
+    networks:
+      - production
+    environment:
+      - REDIS_URI=redis
+    volumes:
+       - "c:/dockerstorage/configpy/firmware:/home/devops/configpy/static/firmware"
+    depends_on:
+      - redis
+      
+  configpy-node:
+    image: natemellendorf/configpy-node:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "9000:9000"
+    networks:
+      - production
+    depends_on:
+      - redis
+      - configpy
+    command: |
+        -user ztp 
+        -password P@ssw0rd 
+        -configpy_url http://10.0.0.204:80 
+        -redis_url redis 
+        -repo_uri http://gitlab:8080/networking/configs 
+        -repo_auth_token pBip1GDe1zRrXxsjR-Px 
+        -software_location http://10.0.0.204/static/firmware/ 
+        -srx_firmware junos-srxsme-15.1X49-D170.4-domestic.tgz 
+        -srx_firmware_checksum 8e8bd9fa8cccbb91144ac8a58d1192dc
+
