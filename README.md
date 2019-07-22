@@ -50,7 +50,8 @@ docker run --name configpy-node \
   -repo_uri http://gitlab:8080/networking/configs \ 
   -repo_auth_token **secret** \
   -software_location http://10.0.0.204/static/firmware/ \ 
-  -srx_firmware junos-srxsme-18.2R1.9.tgz
+  -srx_firmware **shouldContainVersionInName-18.2R1.9.tgz \
+  -srx_firmware_checksum **MD5checksum**
   
 docker run --detach --hostname gitlab.example.com \
 --publish 443:443 \
