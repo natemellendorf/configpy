@@ -273,6 +273,10 @@
 
                   $("#changerepo").attr("disabled",true);
 
+                  socket.emit('getRepo', {"data": data})
+
+                
+
                   $.ajax({
                         url: "/render",
                         type: "POST",

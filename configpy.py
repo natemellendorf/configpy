@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify, g, session
 import requests
 from jinja2 import Environment, FileSystemLoader, meta
 from flask_bootstrap import Bootstrap
@@ -9,9 +9,25 @@ from flask_socketio import SocketIO
 import os
 import redis
 import time
+import secrets
 import logging
 import fnmatch
 from logging.handlers import RotatingFileHandler
+
+from flask_github import GitHub
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+
+import requests
+import sqlite3
+from flask_login import (
+    LoginManager,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
 
 from flask_apscheduler import APScheduler
 
@@ -19,10 +35,25 @@ from flask_apscheduler import APScheduler
 import eventlet
 eventlet.monkey_patch()
 
+
+# Gather secrets
+github_secret = secrets.token_urlsafe(40)
+flask_secret = secrets.token_urlsafe(40)
+
+github_oauth = False
+github_client_id = os.environ.get('GITHUB_CLIENT_ID')
+github_client_secret = os.environ.get('GITHUB_CLIENT_SECRET')
+
+if github_client_id and github_client_secret:
+    github_oauth = True
+
 app = Flask(__name__)
-app.config['secret'] = 's;ldi3r#$R@lkjedf$'
-app.config['slax_host'] = '10.0.0.204'
+app.config['secret'] = flask_secret
+app.config['GITHUB_CLIENT_ID'] = github_client_id
+app.config['GITHUB_CLIENT_SECRET'] = github_client_secret
+app.config['SECRET_KEY'] = github_secret
 bootstrap = Bootstrap(app)
+github = GitHub(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
@@ -48,6 +79,32 @@ if not REDIS_URI:
 r = redis.Redis(host=REDIS_URI, port=6379, db=0)
 
 dbcheck_stat = 0
+
+
+# setup sqlalchemy
+engine = create_engine('sqlite:////tmp/github-flask.db')
+db_session = scoped_session(sessionmaker(autocommit=False,
+                                         autoflush=False,
+                                         bind=engine))
+Base = declarative_base()
+Base.query = db_session.query_property()
+
+
+def init_db():
+    print('creating DB...')
+    Base.metadata.create_all(bind=engine)
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    github_access_token = Column(String(255))
+    github_id = Column(Integer)
+    github_login = Column(String(255))
+
+    def __init__(self, github_access_token):
+        self.github_access_token = github_access_token
 
 
 def current_time():
@@ -107,6 +164,95 @@ def dbcheck_loop():
             # Loop delay
             time.sleep(1)
 
+# Decorators
+@app.before_request
+def before_request():
+    g.user = None
+    if 'user_id' in session:
+        g.user = User.query.get(session['user_id'])
+
+
+@app.after_request
+def after_request(response):
+    db_session.remove()
+    return response
+
+
+@github.access_token_getter
+def token_getter():
+    user = g.user
+    if user is not None:
+        return user.github_access_token
+
+# App routes
+@app.route('/github-callback')
+@github.authorized_handler
+def authorized(access_token):
+    print(request)
+    next_url = request.args.get('next') or url_for('index')
+    if access_token is None:
+        return redirect(next_url)
+
+    user = User.query.filter_by(github_access_token=access_token).first()
+    if user is None:
+        user = User(access_token)
+        db_session.add(user)
+
+    user.github_access_token = access_token
+
+    # Not necessary to get these details here
+    # but it helps humans to identify users easily.
+    g.user = user
+    github_user = github.get('/user')
+    user.github_id = github_user['id']
+    user.github_login = github_user['login']
+
+    db_session.commit()
+
+    session['user_id'] = user.id
+    return redirect(next_url)
+
+
+@app.route('/login')
+def login():
+    if github_oauth and session.get('user_id', None) is None:
+        return github.authorize()
+    else:
+        #print(session['user_id'])
+        return redirect(url_for('index'))
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
+
+
+def GitHubAuthRequired(func):
+    def authwrapper(*args, **kwargs):
+        #print(session)
+        if github_oauth is False:
+            print('Missing GitHub OAuth ID/Secrets!')
+            return redirect(url_for('index'))
+        elif g.user:
+            #print(g.user.github_login)
+            return func(*args, **kwargs)
+        else:
+            print('PLEASE AUTH')
+            return github.authorize(scope="user,repo")
+    authwrapper.__name__ = func.__name__
+    return authwrapper
+
+
+@app.route('/user')
+@GitHubAuthRequired
+def user():
+    '''
+    Auth Example
+    '''
+    return jsonify(github.get('/user'))
+
+
 
 @app.route('/hub', methods=['GET', 'POST'])
 def hub():
@@ -124,6 +270,7 @@ def hub_api(serialnumber):
 
 
 @app.route('/render', methods=['GET', 'POST'])
+@GitHubAuthRequired
 def render():
     repo_dir = 'repo/'
     debug = ''
@@ -223,6 +370,13 @@ def hub_console(data):
     socketio.emit('hub_console', data)
 
 
+@socketio.on('getRepo')
+def getRepo(data):
+    print('-----------')
+    print(data)
+    print('-----------')
+
+
 @socketio.on('getDevice')
 def getDevice(data):
     #print(data)
@@ -301,5 +455,6 @@ def disconnect():
 
 
 if __name__ == '__main__':
+    init_db()
     socketio.run(app, host="0.0.0.0", port=80, debug=True)
 
