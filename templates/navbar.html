@@ -19,8 +19,18 @@
             </li>
         </ul>
         <ul class="navbar-nav ml-auto">
+            {% if g.user.github_login %}
             <li class="nav-item">
+                <a class="nav-link disabled">{{g.user.github_login}}</a>
             </li>
+            <li class="nav-item">
+              <a href="{{ url_for('logout') }}"><button type="button" id="nebula_create_button" class="btn btn-secondary float-right">Logout</button></a>
+           </li>
+            {% else %}
+            <li class="nav-item">
+              <a href="{{ url_for('login') }}"><button type="button" id="nebula_create_button" class="btn btn-secondary float-right">Login</button></a>
+            </li>
+            {% endif %}
         </ul>
     </div>
 </nav>

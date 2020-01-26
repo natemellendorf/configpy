@@ -5,7 +5,7 @@ from flask_bootstrap import Bootstrap
 import yaml, json
 from datetime import datetime
 from get_ext_repo import get_ext_repo, pushtorepo
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import os
 import redis
 import time
@@ -165,7 +165,20 @@ def dbcheck_loop():
             # Loop delay
             time.sleep(1)
 
-# Decorators
+def GitHubAuthRequired(func):
+    def authwrapper(*args, **kwargs):
+        if github_oauth is False:
+            print('Missing GitHub OAuth ID/Secrets!')
+            return redirect(url_for('index'))
+        elif g.user:
+            return func(*args, **kwargs)
+        else:
+            print('PLEASE AUTH')
+            return github.authorize(scope="user,repo")
+    authwrapper.__name__ = func.__name__
+    return authwrapper
+
+
 @app.before_request
 def before_request():
     g.user = None
@@ -185,12 +198,12 @@ def token_getter():
     if user is not None:
         return user.github_access_token
 
-# App routes
+
 @app.route('/github-callback')
 @github.authorized_handler
 def authorized(access_token):
-    print(request)
-    next_url = request.args.get('next') or url_for('index')
+    
+    next_url = request.args.get('next') or url_for('render')
     if access_token is None:
         return redirect(next_url)
 
@@ -214,10 +227,16 @@ def authorized(access_token):
     return redirect(next_url)
 
 
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
+def index():
+    return redirect(url_for('hub'))
+
+
 @app.route('/login')
 def login():
     if github_oauth and session.get('user_id', None) is None:
-        return github.authorize()
+        return github.authorize(scope="user,repo")
     else:
         #print(session['user_id'])
         return redirect(url_for('index'))
@@ -229,22 +248,6 @@ def logout():
     return redirect(url_for('index'))
 
 
-def GitHubAuthRequired(func):
-    def authwrapper(*args, **kwargs):
-        #print(session)
-        if github_oauth is False:
-            print('Missing GitHub OAuth ID/Secrets!')
-            return redirect(url_for('index'))
-        elif g.user:
-            #print(g.user.github_login)
-            return func(*args, **kwargs)
-        else:
-            print('PLEASE AUTH')
-            return github.authorize(scope="user,repo")
-    authwrapper.__name__ = func.__name__
-    return authwrapper
-
-
 @app.route('/user')
 @GitHubAuthRequired
 def user():
@@ -254,11 +257,40 @@ def user():
     return jsonify(github.get('/user'))
 
 
-
 @app.route('/hub', methods=['GET', 'POST'])
-@GitHubAuthRequired
 def hub():
     return render_template('hub.html', title='Hub')
+
+
+@app.route('/render', methods=['GET', 'POST'])
+@GitHubAuthRequired
+def render():
+
+    # Get list of all repos for logged in user
+    github_repos = github.get(f'/user/repos')
+
+    '''
+    if request.get_json():
+        received = request.get_json()
+        repo_url = yaml.load(received["repo_url"])
+
+        ext_repo_info = get_ext_repo(repo_url)
+
+        # Convert python dict to JSON, so AJAX can read it.
+        result = jsonify(ext_repo_info)
+        return result
+    '''
+
+    return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
+
+
+@app.route('/show', methods=['POST'])
+def show():
+    received = request.get_json()
+    answerfile = str(received[0]['value']).replace('.j2', '.yml')
+    r = requests.get(answerfile, timeout=5)
+
+    return r.text
 
 
 @app.route('/hub/device/<serialnumber>', methods=['GET'])
@@ -271,33 +303,16 @@ def hub_api(serialnumber):
     return response
 
 
-@app.route('/render', methods=['GET', 'POST'])
-@GitHubAuthRequired
-def render():
-
-    github_repos = github.get(f'/user/repos')
-
-    if request.get_json():
-        received = request.get_json()
-        repo_url = yaml.load(received["repo_url"])
-
-        ext_repo_info = get_ext_repo(repo_url)
-
-        # Convert python dict to JSON, so AJAX can read it.
-        result = jsonify(ext_repo_info)
-        return result
-
-    #foundtemplates = fnmatch.filter(os.listdir(repo_dir), '*.j2')
-    return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
-
 @app.route('/process', methods=['POST'])
 def process():
+
     '''
     Note: This whole route needs to be rewritten.
     Today, it takes untrusted and unverified data and saves it to the server.
     Although this isn't a big deal if your source is trusted, I would consider it a very bad practice.
     If it absolutely has to save data to the server (doubt), it should be run in a container to isolate it.
     '''
+
     received = request.get_json()
 
     pprint(received)
@@ -344,24 +359,6 @@ def process():
     return str(rendered_template)
 
 
-@app.route('/show', methods=['POST'])
-def show():
-    received = request.get_json()
-    #print(received)
-    answerfile = str(received[0]['value']).replace('.j2', '.yml')
-    r = requests.get(answerfile, timeout=5)
-
-    return r.text
-
-
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/index', methods=['GET', 'POST'])
-@GitHubAuthRequired
-# @login_required
-def index():
-    return redirect(url_for('hub'))
-
-
 @socketio.on('console')
 def test_connect(data):
     current_time = str(datetime.now().time())
@@ -404,9 +401,7 @@ def getRepo(form):
 
         ext_repo_info['files'] = ext_repo_files
 
-        print(ext_repo_info)
-
-        socketio.emit('repoContent', ext_repo_info)
+        emit('repoContent', ext_repo_info)
 
 
 @socketio.on('getDevice')
