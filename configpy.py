@@ -18,6 +18,7 @@ from flask_github import GitHub
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from pprint import pprint
 
 import requests
 import sqlite3
@@ -255,6 +256,7 @@ def user():
 
 
 @app.route('/hub', methods=['GET', 'POST'])
+@GitHubAuthRequired
 def hub():
     return render_template('hub.html', title='Hub')
 
@@ -272,8 +274,8 @@ def hub_api(serialnumber):
 @app.route('/render', methods=['GET', 'POST'])
 @GitHubAuthRequired
 def render():
-    repo_dir = 'repo/'
-    debug = ''
+
+    github_repos = github.get(f'/user/repos')
 
     if request.get_json():
         received = request.get_json()
@@ -285,8 +287,8 @@ def render():
         result = jsonify(ext_repo_info)
         return result
 
-    foundtemplates = fnmatch.filter(os.listdir(repo_dir), '*.j2')
-    return render_template('renderform.html', title='Render Template', foundtemplates=foundtemplates, debug=debug)
+    #foundtemplates = fnmatch.filter(os.listdir(repo_dir), '*.j2')
+    return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -297,6 +299,9 @@ def process():
     If it absolutely has to save data to the server (doubt), it should be run in a container to isolate it.
     '''
     received = request.get_json()
+
+    pprint(received)
+
     r = requests.get(received["template"])
 
     if '---' not in received["answers"]:
@@ -351,6 +356,7 @@ def show():
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
+@GitHubAuthRequired
 # @login_required
 def index():
     return redirect(url_for('hub'))
@@ -371,10 +377,36 @@ def hub_console(data):
 
 
 @socketio.on('getRepo')
-def getRepo(data):
-    print('-----------')
-    print(data)
-    print('-----------')
+def getRepo(form):
+    form = json.loads(form['data'])
+    
+    #github.authorize()
+    g.user = None
+    if 'user_id' in session:
+        g.user = User.query.get(session['user_id'])
+
+    if form.get('selected_repo', None) and form.get('github_user', None):
+        repo = form['selected_repo']
+        user = form['github_user']
+        contents = f'/repos/{user}/{repo}/contents/'
+
+        gh_repo_contents = github.get(contents)
+
+        ext_repo_files = {}
+        ext_repo_info = {}
+
+        for path in gh_repo_contents:
+            if '.j2' in path['path']:
+                filename = path['path'].replace("j2", "yml")
+                for yaml_search in gh_repo_contents:
+                    if filename in yaml_search['path']:
+                        ext_repo_files[path['path']] = path['download_url']
+
+        ext_repo_info['files'] = ext_repo_files
+
+        print(ext_repo_info)
+
+        socketio.emit('repoContent', ext_repo_info)
 
 
 @socketio.on('getDevice')
