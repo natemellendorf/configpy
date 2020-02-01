@@ -1,9 +1,0 @@
-The text below is found within include_test.j2
------------------------------------------------
-!
-Hello, {{ your_name }}!
-!
-----------------------------------------------------
-The text below is dynamically imported from basic_example.j2
------------------------------------------------------
-{% include "basic_example.j2" %}
