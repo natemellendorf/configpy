@@ -1,4 +1,5 @@
 FROM ubuntu:18.04
+RUN ls -lah
 ENV DEBIAN_FRONTEND=noninteractive 
 RUN mkdir /home/devops
 WORKDIR /home/devops
