@@ -257,16 +257,6 @@ def user():
     '''
     return jsonify(github.get('/user'))
 
-@app.route('/repos')
-@GitHubAuthRequired
-def repos():
-    '''
-    Auth Example
-    '''
-    #search = request.args.get('search', '')
-    #return jsonify(github.get(f'/orgs/{GITHUB_ORG}/repos'))
-    return jsonify(github.get(f'/search/repositories?q=org:{GITHUB_ORG}+configpy+in:readme'))
-
 
 @app.route('/hub', methods=['GET', 'POST'])
 def hub():
@@ -281,19 +271,8 @@ def render():
         result = github.get(f'/search/repositories?q=org:{GITHUB_ORG}+configpy+in:readme')
         github_repos = result.get('items', [''])
     else:
-        github_repos = github.get(f'/search/repositories?q=user:{g.user.github_login}+configpy+in:readme')
-
-    '''
-    if request.get_json():
-        received = request.get_json()
-        repo_url = yaml.load(received["repo_url"])
-
-        ext_repo_info = get_ext_repo(repo_url)
-
-        # Convert python dict to JSON, so AJAX can read it.
-        result = jsonify(ext_repo_info)
-        return result
-    '''
+        result = github.get(f'/search/repositories?q=user:{g.user.github_login}+configpy+in:readme')
+        github_repos = result.get('items', [''])
 
     return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
 
@@ -315,57 +294,6 @@ def hub_api(serialnumber):
         api_request[k.decode("utf-8")] = v.decode("utf-8")
     response = jsonify(api_request)
     return response
-
-
-@app.route('/process', methods=['POST'])
-def process():
-    '''
-    Note: This whole route needs to be rewritten.
-    Today, it takes untrusted and unverified data and saves it to the server.
-    Although this isn't a big deal if your source is trusted, I would consider it a very bad practice.
-    If it absolutely has to save data to the server (doubt), it should be run in a container to isolate it.
-    '''
-    received = request.get_json()
-    r = requests.get(received["template"])
-
-    if '---' not in received["answers"]:
-        return 'Answers must begin with ---'
-
-    with open("repo/render.tmp", "w") as file:
-        file.write(r.text)
-
-    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-    ast = env.parse(r.text)
-    dependencies = list(meta.find_referenced_templates(ast))
-    # print(dependencies)
-
-    if dependencies:
-        repo_url = yaml.load(received["repo_url"])
-        ext_repo_info = get_ext_repo(repo_url, 'all')
-        for key, value in ext_repo_info["files"].items():
-            # print(key, value)
-            for dependency in dependencies:
-                if dependency == key:
-                    # print('Process: ' + value)
-                    r = requests.get(value, timeout=5)
-                    with open("repo/{0}".format(key), "w") as file:
-                        file.write(r.text)
-
-    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-
-    try:
-        # Load data from YAML into Python dictionary
-        answerfile = yaml.load(received["answers"])
-        # Load Jinja2 template
-        template = env.get_template("render.tmp")
-        # Render the template
-        rendered_template = template.render(answerfile)
-
-    except Exception as e:
-        # If errors, return them to UI.
-        return str(e)
-
-    return str(rendered_template)
 
 
 @socketio.on('console')
@@ -392,6 +320,7 @@ def process(form):
     form = json.loads(form['data'])
     repo = form.get('selected_repo')
     answers = form.get('answers')
+    user = g.user.github_login
 
     r = requests.get(form["template"])
 
@@ -411,23 +340,23 @@ def process(form):
             org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
             repo_contents = github.get(org_contents)
 
-            ext_repo_files = {}
-
-            for item in repo_contents:
-                if '.j2' in item['path']:
-                    ext_repo_files[item['path']] = item['download_url']
-
-            for key, value in ext_repo_files.items():
-                for dependency in dependencies:
-                    if dependency == key:
-                        r = requests.get(value, timeout=5)
-                        with open("repo/{0}".format(key), "w") as file:
-                            file.write(r.text)
-                        print('Jinja files written!')
-
         else:
             personal_contents = f'/repos/{user}/{repo}/contents/'
             repo_contents = github.get(personal_contents)
+        
+        ext_repo_files = {}
+
+        for item in repo_contents:
+            if '.j2' in item['path']:
+                ext_repo_files[item['path']] = item['download_url']
+
+        for key, value in ext_repo_files.items():
+            for dependency in dependencies:
+                if dependency == key:
+                    r = requests.get(value, timeout=5)
+                    with open("repo/{0}".format(key), "w") as file:
+                        file.write(r.text)
+                    print('Jinja files written!')
 
     print('Loading local templates files...')
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
