@@ -2,7 +2,8 @@ from flask import Flask, render_template, redirect, url_for, request, jsonify, g
 import requests
 from jinja2 import Environment, FileSystemLoader, meta
 from flask_bootstrap import Bootstrap
-import yaml, json
+import yaml
+import json
 from datetime import datetime
 from get_ext_repo import get_ext_repo, pushtorepo
 from flask_socketio import SocketIO, emit
@@ -20,7 +21,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from pprint import pprint
 
-import requests
 import sqlite3
 from flask_login import (
     LoginManager,
@@ -364,7 +364,7 @@ def process(form):
     try:
         print('Trying to render...')
         # Load data from YAML into Python dictionary
-        answerfile = yaml.load(answers)
+        answerfile = yaml.load(answers, Loader=yaml.SafeLoader)
         # Load Jinja2 template
         template = env.get_template("render.tmp")
         # Render the template
