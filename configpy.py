@@ -42,8 +42,8 @@ github_secret = secrets.token_urlsafe(40)
 flask_secret = secrets.token_urlsafe(40)
 
 github_oauth = False
-github_client_id = os.environ.get('GITHUB_CLIENT_ID')
-github_client_secret = os.environ.get('GITHUB_CLIENT_SECRET')
+github_client_id = os.environ.get('GITHUB_CLIENT_ID', None)
+github_client_secret = os.environ.get('GITHUB_CLIENT_SECRET', None)
 GITHUB_ORG = os.environ.get('GITHUB_ORG', None)
 
 if github_client_id and github_client_secret:
@@ -70,10 +70,9 @@ file_handler.setFormatter(logging.Formatter(
 file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
-app.logger.info('Microblog startup')
+app.logger.info('ConfigPy startup')
 
-
-REDIS_URI = os.environ.get('REDIS_URI')
+REDIS_URI = os.environ.get('REDIS_URI', None)
 
 if not REDIS_URI:
     REDIS_URI = '127.0.0.1'
