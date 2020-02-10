@@ -59,7 +59,7 @@ github = GitHub(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
-socketio = SocketIO(app, message_queue='redis://redis')
+socketio = SocketIO(app)
 
 if not os.path.exists('logs'):
     os.mkdir('logs')
@@ -71,10 +71,13 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('ConfigPy startup')
 
-REDIS_URI = os.environ.get('REDIS_URI', '127.0.0.1')
+# REDIS CONFIG
+RD_ADDR = os.environ.get('RD_ADDR', '127.0.0.1')
+RD_PW = os.environ.get('RD_PW', '8w295TkqaDJKfuUd8GYjwLvpFpD4vGzne4n9KgBJtt')
+RD_PORT = os.environ.get('RD_PORT', 6379)
 
-r = redis.Redis(host=REDIS_URI, port=6379, db=0)
-r_app = redis.Redis(host=REDIS_URI, port=6379, db=1, decode_responses=True, charset="utf-8")
+r = redis.Redis(host=RD_ADDR, port=RD_PORT, db=0, decode_responses=True, charset="utf-8", password=RD_PW)
+r_app = redis.Redis(host=RD_ADDR, port=RD_PORT, db=1, decode_responses=True, charset="utf-8", password=RD_PW)
 
 dbcheck_stat = 0
 
@@ -153,6 +156,8 @@ def before_request():
     g.user = None
     if 'user_id' in session:
         get = r_app.hgetall(session['user_id'])
+        #r_app.expire(session['user_id'], 60)
+        print('reset session timeout')
         g.user = dotdict(get)
 
 @app.after_request
@@ -179,6 +184,7 @@ def authorized(access_token):
     if found_users:
         print('Users were found in DB!')
         for user in found_users:
+            print(user)
             current_user = r_app.hgetall(user)
             if current_user['github_access_token']:
                 user = r_app.hgetall(user)
@@ -191,7 +197,7 @@ def authorized(access_token):
 
     if user is None:
         r_app.hmset(github_login, {'github_access_token':access_token})
-        r_app.expire(github_login, 60)
+        r_app.expire(github_login, 7200)
         user = r_app.hgetall(github_login)
 
     r_app.hmset(github_login, {'github_id': github_user["id"]})
@@ -351,6 +357,8 @@ def getRepo(form):
     g.user = None
     if 'user_id' in session:
         get_user = r_app.hgetall(session['user_id'])
+        if not get_user:
+            github.authorize(scope="user,repo")
         g.user = dotdict(get_user)
 
     if form.get('selected_repo', None) and form.get('github_user', None):
