@@ -72,12 +72,10 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('ConfigPy startup')
 
-REDIS_URI = os.environ.get('REDIS_URI', None)
-
-if not REDIS_URI:
-    REDIS_URI = '127.0.0.1'
+REDIS_URI = os.environ.get('REDIS_URI', '127.0.0.1')
 
 r = redis.Redis(host=REDIS_URI, port=6379, db=0)
+r_app = redis.Redis(host=REDIS_URI, port=6379, db=1, decode_responses=True, charset="utf-8")
 
 dbcheck_stat = 0
 
@@ -94,6 +92,11 @@ Base.query = db_session.query_property()
 def init_db():
     print('creating DB...')
     Base.metadata.create_all(bind=engine)
+
+
+class dotdict(dict):
+    def __getattr__(self, name):
+        return self[name]
 
 
 class User(Base):
@@ -167,10 +170,12 @@ def dbcheck_loop():
 
 def GitHubAuthRequired(func):
     def authwrapper(*args, **kwargs):
+        #print('GitHubAuthRequired...')
         if github_oauth is False:
             print('Missing GitHub OAuth ID/Secrets!')
             return redirect(url_for('index'))
         elif g.user:
+            #print('GitHubAuthRequired - G.USER')
             return func(*args, **kwargs)
         else:
             print('PLEASE AUTH')
@@ -183,7 +188,12 @@ def GitHubAuthRequired(func):
 def before_request():
     g.user = None
     if 'user_id' in session:
-        g.user = User.query.get(session['user_id'])
+        #print('--------------------')
+        #g.user = User.query.get(session['user_id'])
+        get = r_app.hgetall(session['user_id'])
+        g.user = dotdict(get)
+        #print(g.user)
+        #print('--------------------')
 
 
 @app.after_request
@@ -194,7 +204,10 @@ def after_request(response):
 
 @github.access_token_getter
 def token_getter():
+    #print('access_token_getter')
+    #print(g.user)
     user = g.user
+    #print(f'ATG: {user}')
     if user is not None:
         return user.github_access_token
 
@@ -207,23 +220,68 @@ def authorized(access_token):
     if access_token is None:
         return redirect(next_url)
 
-    user = User.query.filter_by(github_access_token=access_token).first()
-    if user is None:
-        user = User(access_token)
-        db_session.add(user)
+    #user = User.query.filter_by(github_access_token=access_token).first()
+    #print(f'Access Token in callback init: {access_token}')
 
-    user.github_access_token = access_token
+    user = None
+    found_users = r_app.keys()
+
+    if found_users:
+        #print(found_users)
+        #print('Users were found in DB!')
+        for user in found_users:
+            #print(f'User: {user}')
+            #r_app.delete(user)
+            current_user = r_app.hgetall(user)
+            #print(current_user)
+            if current_user['github_access_token']:
+                user = r_app.hgetall(user)
+    else:
+        print('No users in current DB..')
+
+    #if r_app.exists(access_token):
+    #    user = r_app.hgetall(access_token)
+
+    github_user = github.raw_request('GET','/user', access_token=access_token)
+    github_user = json.loads(github_user.text)
+    github_login = github_user['login']
+
+    #print(f'USER: {github_login}')
+
+    if user is None:
+        #print('----\nUser Object was not found..\n----')
+        r_app.hmset(github_login, {'github_access_token':access_token})
+        r_app.expire(github_login, 60)
+        user = r_app.hgetall(github_login)
+        #user = User(access_token)
+        #db_session.add(user)
+    
+    
+
+    #print(f'Current User in callback: {user}')
+    #user.github_access_token = access_token
 
     # Not necessary to get these details here
     # but it helps humans to identify users easily.
+
+    #g.user = user
+    #github_user = github.get('/user')
+
+    r_app.hmset(github_login, {'github_id': github_user["id"]})
+    #user.github_id = github_user['id']
+
+    r_app.hmset(github_login, {'github_login': github_user["login"]})
+    #user.github_login = github_user['login']
+
+    #db_session.commit()
+
+    user = r_app.hgetall(github_login)
+    user = dotdict(user)
+    
     g.user = user
-    github_user = github.get('/user')
-    user.github_id = github_user['id']
-    user.github_login = github_user['login']
 
-    db_session.commit()
-
-    session['user_id'] = user.id
+    session['user_id'] = user.github_login
+    #session['user_id'] = user.id
     return redirect(next_url)
 
 
@@ -238,13 +296,23 @@ def login():
     if github_oauth and session.get('user_id', None) is None:
         return github.authorize(scope="user,repo")
     else:
-        #print(session['user_id'])
+        #print('SESSION: ' + session['user_id'])
         return redirect(url_for('index'))
 
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
+    db_user = User.query.filter_by(id=session['user_id']).first()
+    if db_user.id:
+        #print(f'Found DB ID: {db_user.id}')
+        db_session.delete(db_user)
+        #print(f'Removed DB ID: {db_user.id}')
+        db_session.commit()
+        #print(f'DB Updated!')
+        status = session.pop('user_id', None)
+        #print(f'Session pop: {status}')
+
+    
     return redirect(url_for('index'))
 
 
@@ -384,7 +452,9 @@ def getRepo(form):
     #github.authorize()
     g.user = None
     if 'user_id' in session:
-        g.user = User.query.get(session['user_id'])
+        get_user = r_app.hgetall(session['user_id'])
+        g.user = dotdict(get_user)
+        #g.user = User.query.get(session['user_id'])
 
     if form.get('selected_repo', None) and form.get('github_user', None):
         repo = form['selected_repo']
