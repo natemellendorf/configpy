@@ -61,7 +61,6 @@ scheduler.init_app(app)
 scheduler.start()
 socketio = SocketIO(app, message_queue='redis://redis')
 
-
 if not os.path.exists('logs'):
     os.mkdir('logs')
 file_handler = RotatingFileHandler('logs/microblog.log', maxBytes=10240, backupCount=10)
@@ -82,34 +81,6 @@ dbcheck_stat = 0
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
-
-'''
-# setup sqlalchemy
-engine = create_engine('sqlite:////tmp/github-flask.db')
-db_session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
-                                         bind=engine))
-Base = declarative_base()
-Base.query = db_session.query_property()
-
-
-def init_db():
-    print('creating DB...')
-    Base.metadata.create_all(bind=engine)
-
-
-class User(Base):
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True)
-    github_access_token = Column(String(255))
-    github_id = Column(Integer)
-    github_login = Column(String(255))
-
-    def __init__(self, github_access_token):
-        self.github_access_token = github_access_token
-'''
-
 
 def current_time():
     current_time = str(datetime.now().time())
@@ -133,18 +104,15 @@ def dbcheck_logic(data, **kwargs):
 
     try:
         found_devices = r.keys()
-        #print(found_devices)
         device_dict = {}
         for key in found_devices:
             key = key.decode("utf-8")
             values = r.hgetall(key)
             device_values = {}
-            #print(values)
             for x, y in values.items():
                 device_values[x.decode("utf-8")] = y.decode("utf-8")
                 device_dict[key] = device_values
 
-        #print(device_values)
         if device_dict:
             data['device'] = device_dict
         else:
@@ -159,7 +127,6 @@ def dbcheck_logic(data, **kwargs):
 
     socketio.emit('dsc', data)
 
-
 def dbcheck_loop():
     data = {'Get': 'devices'}
     with app.test_request_context('/'):
@@ -170,47 +137,33 @@ def dbcheck_loop():
 
 def GitHubAuthRequired(func):
     def authwrapper(*args, **kwargs):
-        #print('GitHubAuthRequired...')
         if github_oauth is False:
             print('Missing GitHub OAuth ID/Secrets!')
             return redirect(url_for('index'))
         elif g.user:
-            #print('GitHubAuthRequired - G.USER')
             return func(*args, **kwargs)
         else:
-            print('PLEASE AUTH')
+            print('Authentication needed')
             return github.authorize(scope="user,repo")
     authwrapper.__name__ = func.__name__
     return authwrapper
-
 
 @app.before_request
 def before_request():
     g.user = None
     if 'user_id' in session:
-        #print('--------------------')
-        #g.user = User.query.get(session['user_id'])
         get = r_app.hgetall(session['user_id'])
         g.user = dotdict(get)
-        #print(g.user)
-        #print('--------------------')
-
 
 @app.after_request
 def after_request(response):
-    #db_session.remove()
     return response
-
 
 @github.access_token_getter
 def token_getter():
-    #print('access_token_getter')
-    #print(g.user)
     user = g.user
-    #print(f'ATG: {user}')
     if user is not None:
         return user.github_access_token
-
 
 @app.route('/github-callback')
 @github.authorized_handler
@@ -220,102 +173,55 @@ def authorized(access_token):
     if access_token is None:
         return redirect(next_url)
 
-    #user = User.query.filter_by(github_access_token=access_token).first()
-    #print(f'Access Token in callback init: {access_token}')
-
     user = None
     found_users = r_app.keys()
 
     if found_users:
-        #print(found_users)
         print('Users were found in DB!')
         for user in found_users:
-            #print(f'User: {user}')
-            #r_app.delete(user)
             current_user = r_app.hgetall(user)
-            #print(current_user)
             if current_user['github_access_token']:
                 user = r_app.hgetall(user)
     else:
         print('No users in current DB..')
 
-    #if r_app.exists(access_token):
-    #    user = r_app.hgetall(access_token)
-
     github_user = github.raw_request('GET','/user', access_token=access_token)
     github_user = json.loads(github_user.text)
     github_login = github_user['login']
 
-    #print(f'USER: {github_login}')
-
     if user is None:
-        #print('----\nUser Object was not found..\n----')
         r_app.hmset(github_login, {'github_access_token':access_token})
         r_app.expire(github_login, 60)
         user = r_app.hgetall(github_login)
-        #user = User(access_token)
-        #db_session.add(user)
-    
-    
-
-    #print(f'Current User in callback: {user}')
-    #user.github_access_token = access_token
-
-    # Not necessary to get these details here
-    # but it helps humans to identify users easily.
-
-    #g.user = user
-    #github_user = github.get('/user')
 
     r_app.hmset(github_login, {'github_id': github_user["id"]})
-    #user.github_id = github_user['id']
-
     r_app.hmset(github_login, {'github_login': github_user["login"]})
-    #user.github_login = github_user['login']
-
-    #db_session.commit()
 
     user = r_app.hgetall(github_login)
     user = dotdict(user)
-    
     g.user = user
-
     session['user_id'] = user.github_login
-    #session['user_id'] = user.id
-    return redirect(next_url)
 
+    return redirect(next_url)
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 def index():
     return redirect(url_for('hub'))
 
-
 @app.route('/login')
 def login():
     if github_oauth and session.get('user_id', None) is None:
         return github.authorize(scope="user,repo")
     else:
-        #print('SESSION: ' + session['user_id'])
         return redirect(url_for('index'))
-
 
 @app.route('/logout')
 def logout():
     if session:
         status = session.pop('user_id', None)
-    #db_user = User.query.filter_by(id=session['user_id']).first()
-    #if db_user.id:
-        #print(f'Found DB ID: {db_user.id}')
-        #db_session.delete(db_user)
-        #print(f'Removed DB ID: {db_user.id}')
-        #db_session.commit()
-        #print(f'DB Updated!')
-        status = session.pop('user_id', None)
-        #print(f'Session pop: {status}')
 
     return redirect(url_for('index'))
-
 
 @app.route('/user')
 @GitHubAuthRequired
@@ -325,11 +231,9 @@ def user():
     '''
     return jsonify(github.get('/user'))
 
-
 @app.route('/hub', methods=['GET', 'POST'])
 def hub():
     return render_template('hub.html', title='Hub')
-
 
 @app.route('/render', methods=['GET', 'POST'])
 @GitHubAuthRequired
@@ -344,7 +248,6 @@ def render():
 
     return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
 
-
 @app.route('/show', methods=['POST'])
 def show():
     received = request.get_json()
@@ -352,7 +255,6 @@ def show():
     r = github.raw_request(method='GET', resource=answerfile)
 
     return r.text
-
 
 @app.route('/hub/device/<serialnumber>', methods=['GET'])
 def hub_api(serialnumber):
@@ -363,7 +265,6 @@ def hub_api(serialnumber):
     response = jsonify(api_request)
     return response
 
-
 @socketio.on('console')
 def test_connect(data):
     current_time = str(datetime.now().time())
@@ -372,11 +273,9 @@ def test_connect(data):
     data['event_time'] = time
     socketio.emit('console', data)
 
-
 @socketio.on('hub_console')
 def hub_console(data):
     socketio.emit('hub_console', data)
-
 
 @socketio.on('render_template')
 def process(form):
@@ -431,7 +330,6 @@ def process(form):
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
 
     try:
-        #print('Trying to render...')
         # Load data from YAML into Python dictionary
         answerfile = yaml.load(answers, Loader=yaml.SafeLoader)
         # Load Jinja2 template
@@ -445,8 +343,6 @@ def process(form):
 
     emit('render_output', str(rendered_template))
 
-
-
 @socketio.on('getRepo')
 def getRepo(form):
     form = json.loads(form['data'])
@@ -456,7 +352,6 @@ def getRepo(form):
     if 'user_id' in session:
         get_user = r_app.hgetall(session['user_id'])
         g.user = dotdict(get_user)
-        #g.user = User.query.get(session['user_id'])
 
     if form.get('selected_repo', None) and form.get('github_user', None):
         repo = form['selected_repo']
@@ -483,14 +378,11 @@ def getRepo(form):
 
         emit('repoContent', ext_repo_info)
 
-
 @socketio.on('getDevice')
 def getDevice(data):
-    #print(data)
     if data['device']:
         values = r.hgetall(data['device'])
         device_values = {}
-        #print(values)
         for x, y in values.items():
             device_values[x.decode("utf-8")] = y.decode("utf-8")
 
@@ -498,10 +390,8 @@ def getDevice(data):
 
 @socketio.on('deleteDevice')
 def deleteDevice(data):
-    #print(data)
     if data['deleteDevice']:
         r.delete(data['deleteDevice'])
-        #socketio.emit('dsc', 'Delete device refresh')
         socketio.emit('deletedDevice', f'Removed: {data["deleteDevice"]}')
 
 
@@ -550,18 +440,14 @@ def gitlabPush(data):
         new_data['event'] = 'The form submitted is missing values.'
         socketio.emit('git_console', new_data)
 
-
 @socketio.on('connect')
 def connect():
     print('Client connected!')
-
 
 @socketio.on('disconnect')
 def disconnect():
     print('Client disconnected')
 
-
 if __name__ == '__main__':
     #init_db()
     socketio.run(app, host="0.0.0.0", port=80, debug=True)
-
