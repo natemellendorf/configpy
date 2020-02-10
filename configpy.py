@@ -79,7 +79,11 @@ r_app = redis.Redis(host=REDIS_URI, port=6379, db=1, decode_responses=True, char
 
 dbcheck_stat = 0
 
+class dotdict(dict):
+    def __getattr__(self, name):
+        return self[name]
 
+'''
 # setup sqlalchemy
 engine = create_engine('sqlite:////tmp/github-flask.db')
 db_session = scoped_session(sessionmaker(autocommit=False,
@@ -94,11 +98,6 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-class dotdict(dict):
-    def __getattr__(self, name):
-        return self[name]
-
-
 class User(Base):
     __tablename__ = 'users'
 
@@ -109,6 +108,7 @@ class User(Base):
 
     def __init__(self, github_access_token):
         self.github_access_token = github_access_token
+'''
 
 
 def current_time():
@@ -198,7 +198,7 @@ def before_request():
 
 @app.after_request
 def after_request(response):
-    db_session.remove()
+    #db_session.remove()
     return response
 
 
@@ -228,7 +228,7 @@ def authorized(access_token):
 
     if found_users:
         #print(found_users)
-        #print('Users were found in DB!')
+        print('Users were found in DB!')
         for user in found_users:
             #print(f'User: {user}')
             #r_app.delete(user)
@@ -302,17 +302,18 @@ def login():
 
 @app.route('/logout')
 def logout():
-    db_user = User.query.filter_by(id=session['user_id']).first()
-    if db_user.id:
+    if session:
+        status = session.pop('user_id', None)
+    #db_user = User.query.filter_by(id=session['user_id']).first()
+    #if db_user.id:
         #print(f'Found DB ID: {db_user.id}')
-        db_session.delete(db_user)
+        #db_session.delete(db_user)
         #print(f'Removed DB ID: {db_user.id}')
-        db_session.commit()
+        #db_session.commit()
         #print(f'DB Updated!')
         status = session.pop('user_id', None)
         #print(f'Session pop: {status}')
 
-    
     return redirect(url_for('index'))
 
 
@@ -382,7 +383,8 @@ def process(form):
     
     g.user = None
     if 'user_id' in session:
-        g.user = User.query.get(session['user_id'])
+        get_user = r_app.hgetall(session['user_id'])
+        g.user = dotdict(get_user)
     
     form = json.loads(form['data'])
     repo = form.get('selected_repo')
@@ -425,11 +427,11 @@ def process(form):
                         file.write(r.text)
                     print('Jinja files written!')
 
-    print('Loading local templates files...')
+    #print('Loading local templates files...')
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
 
     try:
-        print('Trying to render...')
+        #print('Trying to render...')
         # Load data from YAML into Python dictionary
         answerfile = yaml.load(answers, Loader=yaml.SafeLoader)
         # Load Jinja2 template
@@ -560,6 +562,6 @@ def disconnect():
 
 
 if __name__ == '__main__':
-    init_db()
+    #init_db()
     socketio.run(app, host="0.0.0.0", port=80, debug=True)
 
