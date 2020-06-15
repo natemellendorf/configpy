@@ -186,7 +186,7 @@ def authorized(access_token):
         for user in found_users:
             print(user)
             current_user = r_app.hgetall(user)
-            if current_user['github_access_token']:
+            if current_user.get('github_access_token'):
                 user = r_app.hgetall(user)
     else:
         print('No users in current DB..')
@@ -197,7 +197,7 @@ def authorized(access_token):
 
     if user is None:
         r_app.hmset(github_login, {'github_access_token':access_token})
-        r_app.expire(github_login, 7200)
+        r_app.expire(github_login, 900)
         user = r_app.hgetall(github_login)
 
     r_app.hmset(github_login, {'github_id': github_user["id"]})
