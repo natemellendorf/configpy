@@ -140,10 +140,15 @@ def dbcheck_loop():
 
 def GitHubAuthRequired(func):
     def authwrapper(*args, **kwargs):
+        print('--- IN GitHubAuthRequired')
+        print(g.user)
+        print(type(g.user))
         if github_oauth is False:
             print('Missing GitHub OAuth ID/Secrets!')
             return redirect(url_for('index'))
         elif g.user:
+            print('--- GitHubAuthRequired - g.user---')
+            print(g.user)
             return func(*args, **kwargs)
         else:
             print('Authentication needed')
@@ -155,9 +160,10 @@ def GitHubAuthRequired(func):
 def before_request():
     g.user = None
     if 'user_id' in session:
+        print('BEFORE REQUEST')
+        print(session)
         get = r_app.hgetall(session['user_id'])
         #r_app.expire(session['user_id'], 60)
-        print('reset session timeout')
         g.user = dotdict(get)
 
 @app.after_request
@@ -168,6 +174,9 @@ def after_request(response):
 def token_getter():
     user = g.user
     if user is not None:
+        print('- - TOKEN GETTER - - ')
+        print(user)
+        print(' - - END TOKEN GETTER BEFORE RETURN - - ')
         return user.github_access_token
 
 @app.route('/github-callback')
@@ -181,27 +190,43 @@ def authorized(access_token):
     user = None
     found_users = r_app.keys()
 
-    if found_users:
-        print('Users were found in DB!')
-        for user in found_users:
-            print(user)
-            current_user = r_app.hgetall(user)
-            if current_user.get('github_access_token'):
-                user = r_app.hgetall(user)
-    else:
-        print('No users in current DB..')
+    print('access_token')
+    print(access_token)
+    print('- - end access token - - ')
 
     github_user = github.raw_request('GET','/user', access_token=access_token)
     github_user = json.loads(github_user.text)
     github_login = github_user['login']
 
-    if user is None:
+    if found_users:
+        print('Users were found in DB!')
+        for user in found_users:
+            current_dict = r_app.hgetall(user)
+            found_user_name = current_dict.get('github_login')
+            found_user_name = found_user_name.strip()
+            github_login = github_login.strip()
+            if github_login == found_user_name:
+                print(f'Found: {github_login}')
+                # Update user key in DB
+                r_app.hmset(github_login, {'github_access_token':access_token})
+                r_app.hmset(github_login, {'github_id': github_user["id"]})
+                r_app.hmset(github_login, {'github_login': github_user["login"]})
+                r_app.expire(github_login, 900)
+                user = r_app.hgetall(user)
+                break
+            else:
+                print('Checking next user...')
+    else:
+        print('No users in current DB..')
+
+    if not user:
+        # Create new user in DB
+        print('Creating new user in DB')
         r_app.hmset(github_login, {'github_access_token':access_token})
+        r_app.hmset(github_login, {'github_id': github_user["id"]})
+        r_app.hmset(github_login, {'github_login': github_user["login"]})
         r_app.expire(github_login, 900)
         user = r_app.hgetall(github_login)
-
-    r_app.hmset(github_login, {'github_id': github_user["id"]})
-    r_app.hmset(github_login, {'github_login': github_user["login"]})
 
     user = r_app.hgetall(github_login)
     user = dotdict(user)
@@ -244,6 +269,9 @@ def hub():
 @app.route('/render', methods=['GET', 'POST'])
 @GitHubAuthRequired
 def render():
+
+    print ('In route --')
+    print (g.user)
 
     if GITHUB_ORG:
         result = github.get(f'/search/repositories?q=org:{GITHUB_ORG}+configpy+in:readme')
