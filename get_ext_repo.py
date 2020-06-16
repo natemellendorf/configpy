@@ -3,7 +3,6 @@ from pprint import pprint
 import redis
 import json
 from datetime import datetime
-from config_snips import cluster_config
 
 def current_time():
     current_time = str(datetime.now().time())

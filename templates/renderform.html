@@ -9,14 +9,21 @@
 
                 <h5 class="card-title">Jinja/YAML Render</h5>
 
+                {% if foundrepos %}
                 <div class="form-group">
-                    <label for="changerepo">Link to repo.</label>
-                    <input type="text" class="form-control" id="changerepo" aria-describedby="repo_help" oninput="button_change()" placeholder="https://github.com/user/repo" value="">
-                    <small>Please provide the URL to your repo</small>
-                </div>
+                    <label for="selectRepos">Repositories</label>
+                    <select class="form-control" id="selected_repo">
+                    {% for repo in foundrepos %}
+                    <option value="{{ repo.url }}">{{ repo.name }}</option>
+                    {% endfor %}
+                    </select>
+                    <small>Select a repo with .j2 and .yaml files</small>
+                    <input id="github_user" type="hidden" value="{{g.user.github_login}}">
+                  </div>
+                {% endif %}
 
                     <div id="repo_help" class="card-body">
-                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Connect</button>
+                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="change_repo()">Connect</button>
                     </div>
 
                     <div id="console_div" class="form-group" style="display:none">
@@ -155,267 +162,7 @@
 </div>
 </div>
 
-<script type="text/javascript" charset="utf-8">
-
-            var socket = io.connect('http://' + document.domain + ':' + location.port);
-            console.log('http://' + document.domain + ':' + location.port);
-            socket.on('connect', function() {
-            });
-
-            </script>
-<script>
-
-           function render_template() {
-            var div = document.getElementById("rendered_template");
-            div.style.display = "block";
-            }
-
-            function display_form() {
-            var div = document.getElementById("form_div");
-            div.style.display = "block";
-            }
-
-            function display_answers() {
-            var div = document.getElementById("answers_div");
-            div.style.display = "block";
-            }
-
-            function display_console() {
-            var div = document.getElementById("console_div");
-            div.style.display = "block";
-            }
-
-            function display_git_console() {
-            var div = document.getElementById("git_console_div");
-            div.style.display = "block";
-            }
-
-            function update_big() {
-            var updated_answers = document.getElementById("dynamic_af").value;
-            $("#dynamic_af_large").val(updated_answers);
-            }
-
-            function update_small() {
-            var updated_answers = document.getElementById("dynamic_af_large").value;
-            $("#dynamic_af").val(updated_answers);
-            }
-
-            function gitlabPush() {
-            // Gather data needed to push to repo
-            var clientID = document.getElementById("clientID").value;
-            var repo_auth_token = document.getElementById("gitlabToken").value;
-            var node0serialNumber = document.getElementById("node0serialNumber").value;
-            var node1serialNumber = document.getElementById("node1serialNumber").value;
-            var device_config = document.getElementById("complete").value;
-            var repo_uri = document.getElementById("configRepo").value;
-            var ztp = document.getElementById("ztp").checked;
-            var cluster = document.getElementById("cluster").checked;
-            var dict = {'repo_uri': repo_uri, 'clientID': clientID, 'ztp': ztp, 'cluster': cluster, 'repo_auth_token': repo_auth_token, 'serialNumber': {'node0serialNumber': node0serialNumber, 'node1serialNumber': node1serialNumber}, 'device_config': device_config};
-            //alert(JSON.stringify(dict));
-
-            socket.emit('gitlabPush', JSON.stringify(dict));
-            }
-
-            function toggle_render_button() {
-            var div = document.getElementById("render_button");
-            div.style.display = "block";
-            }
-
-            function disconnect_repo() {
-            document.getElementById("changerepo").value="";
-            location.reload();
-            }
-
-            function button_change(){
-            $('#action').html('Connect');
-            }
-
-            // SOCKET
-
-            socket.on('console', function(msg) {
-                console.log(msg);
-                var debug_log = document.getElementById("console");
-                debug_log.value += ('[' + msg['event_time'] + ']: ' + Object.values(msg['event']) + '\n');
-                debug_log.scrollTop = debug_log.scrollHeight;
-            });
-
-            socket.on('git_console', function(msg) {
-                display_git_console();
-                console.log(msg);
-                var git_debug_log = document.getElementById("git_console");
-                git_debug_log.value += ('[' + msg['event_time'] + ']: ' + msg['event'] + '\n');
-                git_debug_log.scrollTop = git_debug_log.scrollHeight;
-            });
-
-            // END
-
-            function action() {
-            var changerepo = document.getElementById("changerepo").value;
-            if (!changerepo){
-                $("#changerepo").val("https://github.com/natemellendorf/tr_templates");
-                change_repo();
-                } else {
-                change_repo();
-                }
-                }
-
-                  // Once repo URL is provided, create a dynamic list of .j2 files in repo and display.
-
-                  function change_repo() {
-                  $('#action').html('Connecting...');
-                  var changerepo = document.getElementById("changerepo").value;
-                  var data = {"repo_url":changerepo};
-
-                  // Sending user data to website console
-                  socket.emit('console', {'event': data});
-                  // Display the website console
-                  display_console();
-
-                  $("#changerepo").attr("disabled",true);
-
-                  $.ajax({
-                        url: "/render",
-                        type: "POST",
-                        contentType: 'application/json',
-                        data : JSON.stringify(data),
-                        // async: false,
-                        success: function(data){
-                                // var debug = JSON.stringify(data, null, 4);
-                                // var data_json = JSON.parse(data); // convert string into JSON.
-                                // console.log(data.content); // debugging
-                                // var error_check = debug.includes("error");
-
-                                if (data['error']){
-                                $('#repo_help').html('<button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="action()">Connect</button>' +
-                                '<div class="alert alert-warning alert-dismissible fade show" role="alert">' +
-                                '<b>Oh snap!</b> Something went wrong...<p>' +
-                                data['error'] +
-                                '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
-                                '<span aria-hidden="true">&times;</span>' +
-                                '</button>' +
-                                '</div>');
-
-                                } else {
-
-                                // Get badge for repo errors
-                                if (data['open_issues'] < 1){
-                                var badge = 'light'
-                                } else {
-                                var badge = 'warning'
-                                }
-                                // End
-
-                                var text = "";
-
-                                for (var x in data['files']) {
-                                text += '<option value=' + data['files'][x] + '>' + x + '</option>\n';
-                                }
-
-                                $("#template").html('<select class="form-control" name="templatefile" id="template" required>\n'+
-                                '<option disabled selected>Select a template...</option>\n' +
-                                text +
-                                '</select>');
-
-                                $('#repo_help').html(
-                                '<button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="location.reload()"">Disconnect</button>'
-                                // Removed because not supported in gitlab...
-                                /// ---
-                                //'<div class="alert alert-secondary alert-dismissible fade show" role="alert">' +
-                                //'<small><b>Name</b>: ' + data['name'] + '</small><br>' +
-                                //'<small><a href="' + data['url'] + '">' + data['url'] + '</a></small><br>' +
-                                //'<small>Owner: ' + data['owner']['login'] + '</small><br>' +
-                                //'<small>Updated: ' + data['updated_at'] + '</small><br>' +
-                                //'<small>Issues: <span class="badge badge-pill badge-' + badge + '">' + data['open_issues'] + '</span></small>' +
-                                //'<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
-                                //'<span aria-hidden="true">&times;</span>' +
-                                //'</button>' +
-                                //'</div>'
-
-                                );
-                                $("#template").attr("disabled",false);
-                                display_form();
-                                // location.reload();
-                                }
-                            }
-                   });
-                  };
-
-
-           // Function to dynamically load answer file onto page.
-
-            $(function() {
-                $("select[name=templatefile]").change(function() {
-                //$('#pre_answers').html('<img src="static/sm_loading.gif" /> retrieving...</img>');
-
-                var dict = [];
-                dict.push({
-                key:   document.getElementById("template").name,
-                value: document.getElementById("template").value
-                });
-
-                $("#view_template").html('<a href="' + document.getElementById("template").value + '" target="_blank"> (view template)</a>');
-
-                   $.ajax({
-                        url: "/show",
-                        type: "POST",
-                        contentType: 'application/json',
-                        data : JSON.stringify(dict),
-                        // async: false,
-
-                        // If answer file is found, update the page.
-                        success: function(response){
-                                var text = document.querySelectorAll("#dynamic_af, #dynamic_af_large");
-                                text.forEach(function(userItem) {
-                                $(userItem).attr("disabled",false);
-                                $(userItem).val(response);
-                                });
-                                //$("#dynamic_af").attr("disabled",false);
-                                //$("#dynamic_af").val(response);
-                                display_answers();
-                                $('#pre_answers').html('');
-                                toggle_render_button();
-                            }
-                   });
-                });
-            });
-
-            // Function to take provided answers, and produce the final render.
-
-            $(function() {
-                $("button[name=process]").click(
-                  function() {
-                    $('#post_process').html('<img src="static/sm_loading.gif" /> Rendering...</img>');
-                    var template = document.getElementById("template").value;
-                    var answers = document.getElementById("dynamic_af").value;
-					var repo_url = document.getElementById("changerepo").value;
-                    var data = {"repo_url":repo_url,"template":template,"answers":answers};
-                    async: false;
-                    // alert(data.template);
-                    // alert(data.answers);
-
-                    socket.emit('console', {'event': data});
-
-                   $.ajax({
-                        url: "/process",
-                        type: "POST",
-                        contentType: 'application/json',
-                        data : JSON.stringify(data),
-                        success: function(data){
-
-                                $('#post_process').html('');
-                                $("#complete").val(data);
-                                // reload();
-                            }
-                   });
-                });
-            });
-
-            function copy() {
-              let copy_render = document.getElementById("complete");
-              copy_render.select();
-              document.execCommand("copy");
-            };
-
-            </script>
+<script src="static/js/configpy.js" type="text/javascript" charset="utf-8">
+</script>
 
 {% endblock %}

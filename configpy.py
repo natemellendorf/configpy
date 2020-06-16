@@ -1,17 +1,34 @@
-from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify, g, session
 import requests
 from jinja2 import Environment, FileSystemLoader, meta
 from flask_bootstrap import Bootstrap
-import yaml, json
+import yaml
+import json
 from datetime import datetime
 from get_ext_repo import get_ext_repo, pushtorepo
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import os
 import redis
 import time
+import secrets
 import logging
 import fnmatch
 from logging.handlers import RotatingFileHandler
+
+from flask_github import GitHub
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from pprint import pprint
+
+import sqlite3
+from flask_login import (
+    LoginManager,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
 
 from flask_apscheduler import APScheduler
 
@@ -19,15 +36,30 @@ from flask_apscheduler import APScheduler
 import eventlet
 eventlet.monkey_patch()
 
+
+# Gather secrets
+github_secret = secrets.token_urlsafe(40)
+flask_secret = secrets.token_urlsafe(40)
+
+github_oauth = False
+github_client_id = os.environ.get('GITHUB_CLIENT_ID', None)
+github_client_secret = os.environ.get('GITHUB_CLIENT_SECRET', None)
+GITHUB_ORG = os.environ.get('GITHUB_ORG', None)
+
+if github_client_id and github_client_secret:
+    github_oauth = True
+
 app = Flask(__name__)
-app.config['secret'] = 's;ldi3r#$R@lkjedf$'
-app.config['slax_host'] = '10.0.0.204'
+app.config['secret'] = flask_secret
+app.config['GITHUB_CLIENT_ID'] = github_client_id
+app.config['GITHUB_CLIENT_SECRET'] = github_client_secret
+app.config['SECRET_KEY'] = github_secret
 bootstrap = Bootstrap(app)
+github = GitHub(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
-socketio = SocketIO(app, message_queue='redis://redis')
-
+socketio = SocketIO(app)
 
 if not os.path.exists('logs'):
     os.mkdir('logs')
@@ -37,18 +69,21 @@ file_handler.setFormatter(logging.Formatter(
 file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
-app.logger.info('Microblog startup')
+app.logger.info('ConfigPy startup')
 
+# REDIS CONFIG
+RD_ADDR = os.environ.get('RD_ADDR', '127.0.0.1')
+RD_PW = os.environ.get('RD_PW', '8w295TkqaDJKfuUd8GYjwLvpFpD4vGzne4n9KgBJtt')
+RD_PORT = os.environ.get('RD_PORT', 6379)
 
-REDIS_URI = os.environ.get('REDIS_URI')
-
-if not REDIS_URI:
-    REDIS_URI = '127.0.0.1'
-
-r = redis.Redis(host=REDIS_URI, port=6379, db=0)
+r = redis.Redis(host=RD_ADDR, port=RD_PORT, db=0, decode_responses=True, charset="utf-8", password=RD_PW)
+r_app = redis.Redis(host=RD_ADDR, port=RD_PORT, db=1, decode_responses=True, charset="utf-8", password=RD_PW)
 
 dbcheck_stat = 0
 
+class dotdict(dict):
+    def __getattr__(self, name):
+        return self[name]
 
 def current_time():
     current_time = str(datetime.now().time())
@@ -72,18 +107,15 @@ def dbcheck_logic(data, **kwargs):
 
     try:
         found_devices = r.keys()
-        #print(found_devices)
         device_dict = {}
         for key in found_devices:
             key = key.decode("utf-8")
             values = r.hgetall(key)
             device_values = {}
-            #print(values)
             for x, y in values.items():
                 device_values[x.decode("utf-8")] = y.decode("utf-8")
                 device_dict[key] = device_values
 
-        #print(device_values)
         if device_dict:
             data['device'] = device_dict
         else:
@@ -98,7 +130,6 @@ def dbcheck_logic(data, **kwargs):
 
     socketio.emit('dsc', data)
 
-
 def dbcheck_loop():
     data = {'Get': 'devices'}
     with app.test_request_context('/'):
@@ -107,11 +138,156 @@ def dbcheck_loop():
             # Loop delay
             time.sleep(1)
 
+def GitHubAuthRequired(func):
+    def authwrapper(*args, **kwargs):
+        if github_oauth is False:
+            print('Missing GitHub OAuth ID/Secrets!')
+            return redirect(url_for('index'))
+        elif g.user:
+            #print('--- GitHubAuthRequired - g.user---')
+            return func(*args, **kwargs)
+        else:
+            print('Authentication needed')
+            return github.authorize(scope="user,repo")
+    authwrapper.__name__ = func.__name__
+    return authwrapper
+
+@app.before_request
+def before_request():
+    g.user = None
+    if 'user_id' in session:
+        #print('BEFORE REQUEST')
+        #print(session)
+        get = r_app.hgetall(session['user_id'])
+        g.user = dotdict(get)
+
+@app.after_request
+def after_request(response):
+    return response
+
+@github.access_token_getter
+def token_getter():
+    user = g.user
+    if user is not None:
+        #print('- - TOKEN GETTER - - ')
+        #print(user)
+        #print(' - - END TOKEN GETTER BEFORE RETURN - - ')
+        return user.github_access_token
+
+@app.route('/github-callback')
+@github.authorized_handler
+def authorized(access_token):
+    
+    next_url = request.args.get('next') or url_for('render')
+    if access_token is None:
+        return redirect(next_url)
+
+    user = None
+    found_users = r_app.keys()
+
+    #print('access_token')
+    #print(access_token)
+    #print('- - end access token - - ')
+
+    github_user = github.raw_request('GET','/user', access_token=access_token)
+    github_user = json.loads(github_user.text)
+    github_login = github_user['login']
+
+    if found_users:
+        #print('Users were found in DB!')
+        #print(f'Users in DB: {found_users}')
+        for c_user in found_users:
+            current_dict = r_app.hgetall(c_user)
+            found_user_name = current_dict.get('github_login')
+            found_user_name = found_user_name.strip()
+            github_login = github_login.strip()
+
+            print(f'User logging in : {github_login}')
+            #print(f'Current User to eval: {found_user_name}')
+
+            if github_login == found_user_name:
+                print(f'Found: {github_login}')
+                # Update user key in DB
+                r_app.hmset(github_login, {'github_access_token':access_token})
+                r_app.hmset(github_login, {'github_id': github_user["id"]})
+                r_app.hmset(github_login, {'github_login': github_user["login"]})
+                r_app.expire(github_login, 900)
+                user = r_app.hgetall(c_user)
+                break
+            else:
+                print('No match, checking next user...')
+            #print(f'Current: {user}')
+    else:
+        print('No users in current DB..')
+
+    if user is None:
+        # Create new user in DB
+        print('Creating new user in DB')
+        r_app.hmset(github_login, {'github_access_token':access_token})
+        r_app.hmset(github_login, {'github_id': github_user["id"]})
+        r_app.hmset(github_login, {'github_login': github_user["login"]})
+        r_app.expire(github_login, 900)
+        user = r_app.hgetall(github_login)
+
+    #print(f'USER: {user}')
+
+    user = dotdict(user)
+    g.user = user
+    session['user_id'] = user.github_login
+
+    return redirect(next_url)
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
+def index():
+    return redirect(url_for('hub'))
+
+@app.route('/login')
+def login():
+    if github_oauth and session.get('user_id', None) is None:
+        return github.authorize(scope="user,repo")
+    else:
+        return redirect(url_for('index'))
+
+@app.route('/logout')
+def logout():
+    if session:
+        status = session.pop('user_id', None)
+
+    return redirect(url_for('index'))
+
+@app.route('/user')
+@GitHubAuthRequired
+def user():
+    '''
+    Auth Example
+    '''
+    return jsonify(github.get('/user'))
 
 @app.route('/hub', methods=['GET', 'POST'])
 def hub():
     return render_template('hub.html', title='Hub')
 
+@app.route('/render', methods=['GET', 'POST'])
+@GitHubAuthRequired
+def render():
+
+    if GITHUB_ORG:
+        result = github.get(f'/search/repositories?q=org:{GITHUB_ORG}+configpy+in:readme')
+        github_repos = result.get('items', [''])
+    else:
+        result = github.get(f'/search/repositories?q=user:{g.user.github_login}+configpy+in:readme')
+        github_repos = result.get('items', [''])
+
+    return render_template('renderform.html', title='Render Template', foundrepos=github_repos)
+
+@app.route('/show', methods=['POST'])
+def show():
+    received = request.get_json()
+    answerfile = str(received[0]['value']).replace('.j2', '.yml')
+    r = github.raw_request(method='GET', resource=answerfile)
+
+    return r.text
 
 @app.route('/hub/device/<serialnumber>', methods=['GET'])
 def hub_api(serialnumber):
@@ -122,93 +298,6 @@ def hub_api(serialnumber):
     response = jsonify(api_request)
     return response
 
-
-@app.route('/render', methods=['GET', 'POST'])
-def render():
-    repo_dir = 'repo/'
-    debug = ''
-
-    if request.get_json():
-        received = request.get_json()
-        repo_url = yaml.load(received["repo_url"])
-
-        ext_repo_info = get_ext_repo(repo_url)
-
-        # Convert python dict to JSON, so AJAX can read it.
-        result = jsonify(ext_repo_info)
-        return result
-
-    foundtemplates = fnmatch.filter(os.listdir(repo_dir), '*.j2')
-    return render_template('renderform.html', title='Render Template', foundtemplates=foundtemplates, debug=debug)
-
-@app.route('/process', methods=['POST'])
-def process():
-    '''
-    Note: This whole route needs to be rewritten.
-    Today, it takes untrusted and unverified data and saves it to the server.
-    Although this isn't a big deal if your source is trusted, I would consider it a very bad practice.
-    If it absolutely has to save data to the server (doubt), it should be run in a container to isolate it.
-    '''
-    received = request.get_json()
-    r = requests.get(received["template"])
-
-    if '---' not in received["answers"]:
-        return 'Answers must begin with ---'
-
-    with open("repo/render.tmp", "w") as file:
-        file.write(r.text)
-
-    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-    ast = env.parse(r.text)
-    dependencies = list(meta.find_referenced_templates(ast))
-    # print(dependencies)
-
-    if dependencies:
-        repo_url = yaml.load(received["repo_url"])
-        ext_repo_info = get_ext_repo(repo_url, 'all')
-        for key, value in ext_repo_info["files"].items():
-            # print(key, value)
-            for dependency in dependencies:
-                if dependency == key:
-                    # print('Process: ' + value)
-                    r = requests.get(value, timeout=5)
-                    with open("repo/{0}".format(key), "w") as file:
-                        file.write(r.text)
-
-    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-
-    try:
-        # Load data from YAML into Python dictionary
-        answerfile = yaml.load(received["answers"])
-        # Load Jinja2 template
-        template = env.get_template("render.tmp")
-        # Render the template
-        rendered_template = template.render(answerfile)
-
-    except Exception as e:
-        # If errors, return them to UI.
-        return str(e)
-
-    return str(rendered_template)
-
-
-@app.route('/show', methods=['POST'])
-def show():
-    received = request.get_json()
-    #print(received)
-    answerfile = str(received[0]['value']).replace('.j2', '.yml')
-    r = requests.get(answerfile, timeout=5)
-
-    return r.text
-
-
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/index', methods=['GET', 'POST'])
-# @login_required
-def index():
-    return redirect(url_for('hub'))
-
-
 @socketio.on('console')
 def test_connect(data):
     current_time = str(datetime.now().time())
@@ -217,19 +306,118 @@ def test_connect(data):
     data['event_time'] = time
     socketio.emit('console', data)
 
-
 @socketio.on('hub_console')
 def hub_console(data):
     socketio.emit('hub_console', data)
 
+@socketio.on('render_template')
+def process(form):
+    
+    g.user = None
+    if 'user_id' in session:
+        get_user = r_app.hgetall(session['user_id'])
+        g.user = dotdict(get_user)
+    
+    form = json.loads(form['data'])
+    repo = form.get('selected_repo')
+    answers = form.get('answers')
+    user = g.user.github_login
+
+    r = requests.get(form["template"])
+
+    if '---' not in form["answers"]:
+        return 'Answers must begin with ---'
+
+    with open("repo/render.tmp", "w") as file:
+        file.write(r.text)
+
+    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
+    ast = env.parse(r.text)
+    dependencies = list(meta.find_referenced_templates(ast))
+
+    if dependencies:
+
+        if GITHUB_ORG:
+            org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
+            repo_contents = github.get(org_contents)
+
+        else:
+            personal_contents = f'/repos/{user}/{repo}/contents/'
+            repo_contents = github.get(personal_contents)
+        
+        ext_repo_files = {}
+
+        for item in repo_contents:
+            if '.j2' in item['path']:
+                ext_repo_files[item['path']] = item['download_url']
+
+        for key, value in ext_repo_files.items():
+            for dependency in dependencies:
+                if dependency == key:
+                    r = requests.get(value, timeout=5)
+                    with open("repo/{0}".format(key), "w") as file:
+                        file.write(r.text)
+                    print('Jinja files written!')
+
+    #print('Loading local templates files...')
+    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
+
+    try:
+        # Load data from YAML into Python dictionary
+        answerfile = yaml.load(answers, Loader=yaml.SafeLoader)
+        # Load Jinja2 template
+        template = env.get_template("render.tmp")
+        # Render the template
+        rendered_template = template.render(answerfile)
+
+    except Exception as e:
+        # If errors, return them to UI.
+            emit('render_output', str(e))
+
+    emit('render_output', str(rendered_template))
+
+@socketio.on('getRepo')
+def getRepo(form):
+    form = json.loads(form['data'])
+    
+    #github.authorize()
+    g.user = None
+    if 'user_id' in session:
+        get_user = r_app.hgetall(session['user_id'])
+        if not get_user:
+            github.authorize(scope="user,repo")
+        g.user = dotdict(get_user)
+
+    if form.get('selected_repo', None) and form.get('github_user', None):
+        repo = form['selected_repo']
+        user = form['github_user']
+
+        if GITHUB_ORG:
+            org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
+            gh_repo_contents = github.get(org_contents)
+        else:
+            personal_contents = f'/repos/{user}/{repo}/contents/'
+            gh_repo_contents = github.get(personal_contents)
+
+        ext_repo_files = {}
+        ext_repo_info = {}
+
+        for path in gh_repo_contents:
+            if '.j2' in path['path']:
+                filename = path['path'].replace("j2", "yml")
+                for yaml_search in gh_repo_contents:
+                    if filename in yaml_search['path']:
+                        ext_repo_files[path['path']] = path['download_url']
+
+        ext_repo_info['files'] = ext_repo_files
+
+        emit('repoContent', ext_repo_info)
 
 @socketio.on('getDevice')
 def getDevice(data):
-    #print(data)
     if data['device']:
         values = r.hgetall(data['device'])
         device_values = {}
-        #print(values)
         for x, y in values.items():
             device_values[x.decode("utf-8")] = y.decode("utf-8")
 
@@ -237,10 +425,8 @@ def getDevice(data):
 
 @socketio.on('deleteDevice')
 def deleteDevice(data):
-    #print(data)
     if data['deleteDevice']:
         r.delete(data['deleteDevice'])
-        #socketio.emit('dsc', 'Delete device refresh')
         socketio.emit('deletedDevice', f'Removed: {data["deleteDevice"]}')
 
 
@@ -289,17 +475,14 @@ def gitlabPush(data):
         new_data['event'] = 'The form submitted is missing values.'
         socketio.emit('git_console', new_data)
 
-
 @socketio.on('connect')
 def connect():
     print('Client connected!')
-
 
 @socketio.on('disconnect')
 def disconnect():
     print('Client disconnected')
 
-
 if __name__ == '__main__':
+    #init_db()
     socketio.run(app, host="0.0.0.0", port=80, debug=True)
-
