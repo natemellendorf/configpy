@@ -188,12 +188,16 @@ $(function() {
         $('#post_process').html('<img src="static/sm_loading.gif" /> Rendering...</img>');
         var selected = document.getElementById("selected_repo");
         var template = document.getElementById("template").value;
+        var sel_template = document.getElementById("template");
         var answers = document.getElementById("dynamic_af").value;
+        var selected = document.getElementById("selected_repo");
+        var selected_template = sel_template.options[sel_template.selectedIndex].text;
         var selected_repo = selected.options[selected.selectedIndex].text;
         var repo_url = selected.options[selected.selectedIndex].value;
 
-        var data = {"selected_repo":selected_repo,"repo_url":repo_url,"template":template,"answers":answers};
+        var data = {"selected_repo":selected_repo,"repo_url":repo_url,"template":template,"answers":answers, "selected_template":selected_template};
         async: false;
+
 
         socket.emit('console', {'event': ['rendering...']});
         socket.emit('render_template', {"data": JSON.stringify(data)});

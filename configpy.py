@@ -169,9 +169,6 @@ def after_request(response):
 def token_getter():
     user = g.user
     if user is not None:
-        #print('- - TOKEN GETTER - - ')
-        #print(user)
-        #print(' - - END TOKEN GETTER BEFORE RETURN - - ')
         return user.github_access_token
 
 @app.route('/github-callback')
@@ -312,27 +309,44 @@ def hub_console(data):
 
 @socketio.on('render_template')
 def process(form):
-    
+
     g.user = None
     if 'user_id' in session:
         get_user = r_app.hgetall(session['user_id'])
+        if not get_user:
+            github.authorize(scope="user,repo")
         g.user = dotdict(get_user)
     
     form = json.loads(form['data'])
     repo = form.get('selected_repo')
+    selected_template = form.get('selected_template')
     answers = form.get('answers')
     user = g.user.github_login
-
-    r = requests.get(form["template"])
 
     if '---' not in form["answers"]:
         return 'Answers must begin with ---'
 
+    if GITHUB_ORG:
+        org_selected_template = f'/repos/{GITHUB_ORG}/{repo}/contents/{selected_template}'
+        template_file = github.raw_request(method='GET', 
+            resource=org_selected_template, 
+            access_token=get_user['github_access_token'],
+            headers={'Accept': 'application/vnd.github.v3.raw'}
+            )
+    else:
+        personal_selected_template = f'/repos/{user}/{repo}/contents/{selected_template}'
+        template_file = github.raw_request(method='GET', 
+            resource=org_selected_template, 
+            access_token=get_user['github_access_token'],
+            headers={'Accept': 'application/vnd.github.v3.raw'}
+            )
+    
+
     with open("repo/render.tmp", "w") as file:
-        file.write(r.text)
+        file.write(template_file.text)
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
-    ast = env.parse(r.text)
+    ast = env.parse(template_file.text)
     dependencies = list(meta.find_referenced_templates(ast))
 
     if dependencies:
