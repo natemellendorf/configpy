@@ -403,8 +403,8 @@ def process(form):
         # If errors, return them to UI.
             emit('render_output', str(e))
 
-    emit('progress_bar', 100)
     emit('render_output', str(rendered_template))
+    emit('progress_bar', 100)
 
 @socketio.on('getRepo')
 def getRepo(form):

@@ -103,8 +103,14 @@ socket.on('render_output', function(msg) {
     $("#complete").val(msg);
 });
 
-socket.on('progress_bar', function(msg) {
-    $('.progress-bar').css('width', msg+'%').attr('aria-valuenow', msg).value(msg); 
+socket.on('progress_bar', function(value) {
+    $('.progress').show();
+    if (value < 100){
+        $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value).value(value);
+    }else{
+        $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value).value(value);
+        $('.progress').fadeOut(5000);
+    }
 });
 
 socket.on('console', function(msg) {
