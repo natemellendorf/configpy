@@ -103,6 +103,10 @@ socket.on('render_output', function(msg) {
     $("#complete").val(msg);
 });
 
+socket.on('progress_bar', function(msg) {
+    $('.progress-bar').css('width', msg+'%').attr('aria-valuenow', msg).value(msg); 
+});
+
 socket.on('console', function(msg) {
     //console.log(msg);
     var debug_log = document.getElementById("console");
@@ -185,7 +189,7 @@ $(function() {
 $(function() {
     $("button[name=process]").click(
       function() {
-        $('#post_process').html('<img src="static/sm_loading.gif" /> Rendering...</img>');
+        //$('#post_process').html('<img src="static/sm_loading.gif" /> Rendering...</img>');
         var selected = document.getElementById("selected_repo");
         var template = document.getElementById("template").value;
         var sel_template = document.getElementById("template");

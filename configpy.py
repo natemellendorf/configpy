@@ -322,9 +322,13 @@ def process(form):
     selected_template = form.get('selected_template')
     answers = form.get('answers')
     user = g.user.github_login
+    epoch_time = str(time.time())
 
-    if '---' not in form["answers"]:
-        return 'Answers must begin with ---'
+    emit('progress_bar', 5)
+
+    if "---" not in answers:
+        emit('render_output', 'Answers must begin with ---')
+        return
 
     if GITHUB_ORG:
         org_selected_template = f'/repos/{GITHUB_ORG}/{repo}/contents/{selected_template}'
@@ -341,9 +345,20 @@ def process(form):
             headers={'Accept': 'application/vnd.github.v3.raw'}
             )
     
+    try:
+        os.mkdir(f"repo/{epoch_time}")
+    except OSError:
+        app.logger.info(f"Creation of the directory {epoch_time} failed")
+        emit('render_output', 'Answers must begin with ---')
+        return
+    else:
+        app.logger.info(f"Successfully created the directory {epoch_time}")
+        emit('progress_bar', 10)
 
-    with open("repo/render.tmp", "w") as file:
+    with open(f"repo/{epoch_time}/render.tmp", "w") as file:
         file.write(template_file.text)
+    
+    emit('progress_bar', 20)
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
     ast = env.parse(template_file.text)
@@ -369,12 +384,12 @@ def process(form):
             for dependency in dependencies:
                 if dependency == key:
                     r = requests.get(value, timeout=5)
-                    with open("repo/{0}".format(key), "w") as file:
+                    with open(f"repo/{epoch_time}/{key}", "w") as file:
                         file.write(r.text)
                     print('Jinja files written!')
 
     #print('Loading local templates files...')
-    env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
+    env = Environment(loader=FileSystemLoader(f"repo/{epoch_time}/"), trim_blocks=True, lstrip_blocks=True)
 
     try:
         # Load data from YAML into Python dictionary
@@ -388,6 +403,7 @@ def process(form):
         # If errors, return them to UI.
             emit('render_output', str(e))
 
+    emit('progress_bar', 100)
     emit('render_output', str(rendered_template))
 
 @socketio.on('getRepo')
