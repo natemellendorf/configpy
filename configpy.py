@@ -336,7 +336,7 @@ def process(form):
     else:
         personal_selected_template = f'/repos/{user}/{repo}/contents/{selected_template}'
         template_file = github.raw_request(method='GET', 
-            resource=org_selected_template, 
+            resource=personal_selected_template, 
             access_token=get_user['github_access_token'],
             headers={'Accept': 'application/vnd.github.v3.raw'}
             )
