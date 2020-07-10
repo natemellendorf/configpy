@@ -52,15 +52,15 @@
                         <textarea class="form-control" name="dynamic_af" id="dynamic_af" rows="10" placeholder="Answers must be in YAML format." required disabled></textarea>
                     </div>
                 </form>
-                <div id="render_button" style="display:none">
+                <div id="render_button" class="form-group" style="display:none">
                     <button name="process" id="process" class="btn btn-secondary" onclick="render_template()">Render</button>
                     <button type="button" class="btn btn-secondary" onclick="update_big()" data-backdrop="static" data-toggle="modal" data-target=".edit">Edit</button>
                 </div>
-            </div>
-            <div>
+
                 <div class="progress" id="progress_bar_parent" style="display:none">
                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" id="progress_bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
+
             </div>
         </div>
     </div>
