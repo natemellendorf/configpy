@@ -13,6 +13,7 @@ import time
 import secrets
 import logging
 import fnmatch
+from shutil import rmtree
 from logging.handlers import RotatingFileHandler
 
 from flask_github import GitHub
@@ -327,11 +328,13 @@ def process(form):
     emit('progress_bar', 5)
 
     if "---" not in answers:
-        emit('render_output', 'Answers must begin with ---')
+        app.logger.info(f"Answers must begin with ---")
+        emit('render_output', "Answers must begin with ---")
         return
 
     if GITHUB_ORG:
         org_selected_template = f'/repos/{GITHUB_ORG}/{repo}/contents/{selected_template}'
+        app.logger.info(f"Attempting to GET: {org_selected_template}")
         template_file = github.raw_request(method='GET', 
             resource=org_selected_template, 
             access_token=get_user['github_access_token'],
@@ -339,57 +342,79 @@ def process(form):
             )
     else:
         personal_selected_template = f'/repos/{user}/{repo}/contents/{selected_template}'
+        app.logger.info(f"Attempting to GET: {personal_selected_template}")
         template_file = github.raw_request(method='GET', 
             resource=personal_selected_template, 
             access_token=get_user['github_access_token'],
             headers={'Accept': 'application/vnd.github.v3.raw'}
             )
     
+    emit('progress_bar', 10)
+
+    working_dir = f"repo/{epoch_time}"
+
     try:
-        os.mkdir(f"repo/{epoch_time}")
+        os.mkdir(working_dir)
     except OSError:
-        app.logger.info(f"Creation of the directory {epoch_time} failed")
+        app.logger.error(f"Creation of the directory {epoch_time} failed")
         emit('render_output', 'Answers must begin with ---')
         return
     else:
         app.logger.info(f"Successfully created the directory {epoch_time}")
-        emit('progress_bar', 10)
+        emit('progress_bar', 20)
 
-    with open(f"repo/{epoch_time}/render.tmp", "w") as file:
+    local_template = f"repo/{epoch_time}/render.tmp"
+    app.logger.info(f"Attempting to write template to: {local_template}")
+    with open(local_template, "w") as file:
         file.write(template_file.text)
     
-    emit('progress_bar', 20)
+    emit('progress_bar', 30)
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
     ast = env.parse(template_file.text)
     dependencies = list(meta.find_referenced_templates(ast))
 
+    emit('progress_bar', 40)
+
     if dependencies:
+        app.logger.info(f"Jinja Dependancies found")
 
         if GITHUB_ORG:
+            app.logger.info(f"Gathering Org template dependancies")
             org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
             repo_contents = github.get(org_contents)
 
         else:
+            app.logger.info(f"Gathering Personal template dependancies")
             personal_contents = f'/repos/{user}/{repo}/contents/'
             repo_contents = github.get(personal_contents)
+
+        emit('progress_bar', 50)
         
         ext_repo_files = {}
 
         for item in repo_contents:
             if '.j2' in item['path']:
                 ext_repo_files[item['path']] = item['download_url']
+        
+        emit('progress_bar', 60)
 
         for key, value in ext_repo_files.items():
             for dependency in dependencies:
                 if dependency == key:
                     r = requests.get(value, timeout=5)
-                    with open(f"repo/{epoch_time}/{key}", "w") as file:
+                    dependency_file = f"repo/{epoch_time}/{key}"
+                    app.logger.info(f"Attempting to write dependency: {dependency_file}")
+                    with open(dependency_file, "w") as file:
                         file.write(r.text)
-                    print('Jinja files written!')
 
-    #print('Loading local templates files...')
-    env = Environment(loader=FileSystemLoader(f"repo/{epoch_time}/"), trim_blocks=True, lstrip_blocks=True)
+    app.logger.info(f"All required files gathered!")
+
+    emit('progress_bar', 70)
+
+    template_wd = f"repo/{epoch_time}/"
+    app.logger.info(f"Setting template directory to: {template_wd}")
+    env = Environment(loader=FileSystemLoader(template_wd), trim_blocks=True, lstrip_blocks=True)
 
     try:
         # Load data from YAML into Python dictionary
@@ -399,12 +424,24 @@ def process(form):
         # Render the template
         rendered_template = template.render(answerfile)
 
+        app.logger.info(f"Render Complete!")
+
     except Exception as e:
         # If errors, return them to UI.
-            emit('render_output', str(e))
+        app.logger.info(f"Error Rendering: {e}")
+        emit('render_output', str(e))
 
     emit('render_output', str(rendered_template))
     emit('progress_bar', 100)
+
+    try:
+        rmtree(working_dir)
+    except Exception as e:
+        app.logger.error(f"Deletion of the directory {working_dir} failed")
+        return
+    else:
+        app.logger.info(f"Successfully deleted the directory {working_dir}")
+
 
 @socketio.on('getRepo')
 def getRepo(form):
