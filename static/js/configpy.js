@@ -3,11 +3,6 @@ console.log('http://' + document.domain + ':' + location.port);
 socket.on('connect', function() {
 });
 
-function render_template() {
-var div = document.getElementById("rendered_template");
-div.style.display = "block";
-}
-
 function display_form() {
 var div = document.getElementById("form_div");
 div.style.display = "block";
@@ -60,7 +55,6 @@ div.style.display = "block";
 }
 
 function disconnect_repo() {
-//document.getElementById("changerepo").value="";
 location.reload();
 }
 
@@ -108,12 +102,21 @@ socket.on('render_output', function(msg) {
 });
 
 socket.on('progress_bar', function(value) {
-    if (value < 100){
+    if (value['progress'] < 100){
         $('.progress').show();
-        $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value);
+        $('.progress-bar').removeClass (function (index, className) {
+            return (className.match (/bg-[a-zA-Z]+/) || []).join(' ');
+        });
+        $('.progress-bar').addClass("bg-"+value['status']);
+        $('.progress-bar').css('width', value['progress']+'%').attr('aria-valuenow', value['progress']);
     }else{
-        $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value);
-        $('.progress').fadeOut();
+        $('.progress-bar').removeClass (function (index, className) {
+            return (className.match (/bg-[a-zA-Z]+/) || []).join(' ');
+        });
+        $('.progress-bar').addClass("bg-"+value['status']);
+        $('.progress-bar').css('width', value['progress']+'%').attr('aria-valuenow', value['progress']);
+        $('.progress').delay(1000).fadeOut("slow");
+        $("#rendered_template").fadeIn();
     }
 });
 
@@ -220,8 +223,6 @@ $(function() {
         var data = {"selected_repo":selected_repo,"repo_url":repo_url,"template":template,"answers":answers, "selected_template":selected_template};
         async: false;
 
-
-        //socket.emit('console', {'event': ['rendering...']});
         socket.emit('render_template', {"data": JSON.stringify(data)});
 
     });

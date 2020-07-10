@@ -325,11 +325,13 @@ def process(form):
     user = g.user.github_login
     epoch_time = str(time.time())
 
-    emit('progress_bar', 5)
+    emit('progress_bar', {"status": "secondary", "progress": 5})
 
     if "---" not in answers:
         app.logger.info(f"Answers must begin with ---")
         emit('render_console', "Answers must begin with ---")
+        emit('progress_bar', {"status": "danger", "progress": 100})
+        emit('render_output', f"Answers must begin with ---")
         return
 
     if GITHUB_ORG:
@@ -351,7 +353,7 @@ def process(form):
             headers={'Accept': 'application/vnd.github.v3.raw'}
             )
     
-    emit('progress_bar', 10)
+    emit('progress_bar', {"status": "secondary", "progress": 10})
 
     working_dir = f"repo/{epoch_time}"
 
@@ -364,7 +366,7 @@ def process(form):
     else:
         app.logger.info(f"Successfully created the directory {epoch_time}")
         emit('render_console', f"Successfully created the directory {epoch_time}")
-        emit('progress_bar', 20)
+        emit('progress_bar', {"status": "secondary", "progress": 20})
 
     local_template = f"repo/{epoch_time}/render.tmp"
     app.logger.info(f"Attempting to write template to: {local_template}")
@@ -372,13 +374,13 @@ def process(form):
     with open(local_template, "w") as file:
         file.write(template_file.text)
     
-    emit('progress_bar', 30)
+    emit('progress_bar', {"status": "secondary", "progress": 30})
 
     env = Environment(loader=FileSystemLoader('repo/'), trim_blocks=True, lstrip_blocks=True)
     ast = env.parse(template_file.text)
     dependencies = list(meta.find_referenced_templates(ast))
 
-    emit('progress_bar', 40)
+    emit('progress_bar', {"status": "secondary", "progress": 40})
 
     if dependencies:
         app.logger.info(f"Jinja Dependancies found")
@@ -396,7 +398,7 @@ def process(form):
             personal_contents = f'/repos/{user}/{repo}/contents/'
             repo_contents = github.get(personal_contents)
 
-        emit('progress_bar', 50)
+        emit('progress_bar', {"status": "secondary", "progress": 50})
         
         ext_repo_files = {}
 
@@ -404,22 +406,42 @@ def process(form):
             if '.j2' in item['path']:
                 ext_repo_files[item['path']] = item['download_url']
         
-        emit('progress_bar', 60)
+        emit('progress_bar', {"status": "secondary", "progress": 60})
+
+        l_index = 0
 
         for key, value in ext_repo_files.items():
             for dependency in dependencies:
                 if dependency == key:
+                    l_index += 1
+                    current = l_index/3 
+                    app.logger.info(f"Dependency number: {60 + current}")
+                    emit('render_console', f"Dependency number: {60 + current}")
+
+                    emit('progress_bar', {"status": "secondary", "progress": 60 + current})
+
                     r = requests.get(value, timeout=5)
                     dependency_file = f"repo/{epoch_time}/{key}"
-                    app.logger.info(f"Attempting to write dependency: {dependency_file}")
+
+                    app.logger.info(f"Dependency name: {dependency_file}")
                     emit('render_console', f"Attempting to write dependency: {dependency_file}")
+
                     with open(dependency_file, "w") as file:
                         file.write(r.text)
+                    
+                    if os.path.exists(dependency_file):
+                        app.logger.info(f"Dependency written successfully")
+                        emit('render_console', f"File written successfully")
+                    else:
+                        app.logger.info(f"Fail: Dependency was written but not found")
+                        emit('render_console', f"Fail: Dependency was written but not found")
+                        return
+
 
     app.logger.info(f"All required files gathered!")
     emit('render_console', f"All required files gathered!")
 
-    emit('progress_bar', 70)
+    emit('progress_bar', {"status": "secondary", "progress": 90})
 
     template_wd = f"repo/{epoch_time}/"
     app.logger.info(f"Setting template directory to: {template_wd}")
@@ -437,11 +459,12 @@ def process(form):
         app.logger.info(f"Render Complete!")
         emit('render_console', f"Render Complete!")
         emit('render_output', str(rendered_template))
-        emit('progress_bar', 100)
+        emit('progress_bar', {"status": "success", "progress": 100})
 
     except Exception as e:
         # If errors, return them to UI.
         app.logger.info(f"Error Rendering: {e}")
+        emit('progress_bar', {"status": "danger", "progress": 100})
         emit('render_console', f"Error Rendering: {e}")
         emit('render_output', str(e))
     
