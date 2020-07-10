@@ -362,6 +362,12 @@ def process(form):
     except OSError:
         app.logger.error(f"Creation of the directory {epoch_time} failed")
         emit('render_console', f"Creation of the directory {epoch_time} failed")
+        emit('progress_bar', {"status": "danger", "progress": 100})
+        return
+    except Exception as e:
+        app.logger.error(f"Unknown Exception: {e}")
+        emit('render_console', f"Unknown Exception: {e}")
+        emit('progress_bar', {"status": "danger", "progress": 100})
         return
     else:
         app.logger.info(f"Successfully created the directory {epoch_time}")
