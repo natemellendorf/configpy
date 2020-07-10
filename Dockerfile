@@ -19,5 +19,5 @@ ENV PATH "$PATH:/home/unprivileged/.local/bin"
 
 RUN pip3 install --user -r requirements.txt
 
-EXPOSE 80
+EXPOSE 8000
 ENTRYPOINT python3 configpy.py
