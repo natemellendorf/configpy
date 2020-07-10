@@ -329,12 +329,13 @@ def process(form):
 
     if "---" not in answers:
         app.logger.info(f"Answers must begin with ---")
-        emit('render_output', "Answers must begin with ---")
+        emit('render_console', "Answers must begin with ---")
         return
 
     if GITHUB_ORG:
         org_selected_template = f'/repos/{GITHUB_ORG}/{repo}/contents/{selected_template}'
         app.logger.info(f"Attempting to GET: {org_selected_template}")
+        emit('render_console', f"Attempting to GET: {org_selected_template}")
         template_file = github.raw_request(method='GET', 
             resource=org_selected_template, 
             access_token=get_user['github_access_token'],
@@ -343,6 +344,7 @@ def process(form):
     else:
         personal_selected_template = f'/repos/{user}/{repo}/contents/{selected_template}'
         app.logger.info(f"Attempting to GET: {personal_selected_template}")
+        emit('render_console', f"Attempting to GET: {personal_selected_template}")
         template_file = github.raw_request(method='GET', 
             resource=personal_selected_template, 
             access_token=get_user['github_access_token'],
@@ -357,14 +359,16 @@ def process(form):
         os.mkdir(working_dir)
     except OSError:
         app.logger.error(f"Creation of the directory {epoch_time} failed")
-        emit('render_output', 'Answers must begin with ---')
+        emit('render_console', f"Creation of the directory {epoch_time} failed")
         return
     else:
         app.logger.info(f"Successfully created the directory {epoch_time}")
+        emit('render_console', f"Successfully created the directory {epoch_time}")
         emit('progress_bar', 20)
 
     local_template = f"repo/{epoch_time}/render.tmp"
     app.logger.info(f"Attempting to write template to: {local_template}")
+    emit('render_console', f"Attempting to write template to: {local_template}")
     with open(local_template, "w") as file:
         file.write(template_file.text)
     
@@ -378,14 +382,17 @@ def process(form):
 
     if dependencies:
         app.logger.info(f"Jinja Dependancies found")
+        emit('render_console', f"Jinja Dependancies found")
 
         if GITHUB_ORG:
             app.logger.info(f"Gathering Org template dependancies")
+            emit('render_console', f"Gathering Org template dependancies")
             org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
             repo_contents = github.get(org_contents)
 
         else:
             app.logger.info(f"Gathering Personal template dependancies")
+            emit('render_console', f"Gathering Personal template dependancies")
             personal_contents = f'/repos/{user}/{repo}/contents/'
             repo_contents = github.get(personal_contents)
 
@@ -405,15 +412,18 @@ def process(form):
                     r = requests.get(value, timeout=5)
                     dependency_file = f"repo/{epoch_time}/{key}"
                     app.logger.info(f"Attempting to write dependency: {dependency_file}")
+                    emit('render_console', f"Attempting to write dependency: {dependency_file}")
                     with open(dependency_file, "w") as file:
                         file.write(r.text)
 
     app.logger.info(f"All required files gathered!")
+    emit('render_console', f"All required files gathered!")
 
     emit('progress_bar', 70)
 
     template_wd = f"repo/{epoch_time}/"
     app.logger.info(f"Setting template directory to: {template_wd}")
+    emit('render_console', f"Setting template directory to: {template_wd}")
     env = Environment(loader=FileSystemLoader(template_wd), trim_blocks=True, lstrip_blocks=True)
 
     try:
@@ -425,22 +435,26 @@ def process(form):
         rendered_template = template.render(answerfile)
 
         app.logger.info(f"Render Complete!")
+        emit('render_console', f"Render Complete!")
+        emit('render_output', str(rendered_template))
+        emit('progress_bar', 100)
 
     except Exception as e:
         # If errors, return them to UI.
         app.logger.info(f"Error Rendering: {e}")
+        emit('render_console', f"Error Rendering: {e}")
         emit('render_output', str(e))
-
-    emit('render_output', str(rendered_template))
-    emit('progress_bar', 100)
-
+    
     try:
         rmtree(working_dir)
     except Exception as e:
         app.logger.error(f"Deletion of the directory {working_dir} failed")
+        emit('render_console', f"Deletion of the directory {working_dir} failed")
+        
         return
     else:
         app.logger.info(f"Successfully deleted the directory {working_dir}")
+        emit('render_console', f"Successfully deleted the directory {working_dir}")
 
 
 @socketio.on('getRepo')
@@ -459,6 +473,9 @@ def getRepo(form):
         repo = form['selected_repo']
         user = form['github_user']
 
+        emit('render_console', f"Requesting User: {user}")
+        emit('render_console', f"Repo to search: {repo}")
+
         if GITHUB_ORG:
             org_contents = f'/repos/{GITHUB_ORG}/{repo}/contents/'
             gh_repo_contents = github.get(org_contents)
@@ -474,6 +491,7 @@ def getRepo(form):
                 filename = path['path'].replace("j2", "yml")
                 for yaml_search in gh_repo_contents:
                     if filename in yaml_search['path']:
+                        emit('render_console', f"Templates found: {path['path']}")
                         ext_repo_files[path['path']] = path['download_url']
 
         ext_repo_info['files'] = ext_repo_files

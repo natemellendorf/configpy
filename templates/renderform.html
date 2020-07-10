@@ -24,12 +24,8 @@
 
                     <div id="repo_help" class="card-body">
                         <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="change_repo()">Connect</button>
+                        <button id="render_log_btn" type="button" class="btn btn-outline-secondary btn-lg btn-block" data-toggle="modal" data-target=".log_modal">Logs</button>
                     </div>
-
-                    <div id="console_div" class="form-group" style="display:none">
-                        <textarea class="form-control form-control-sm" rows="5" id="console" disabled></textarea>
-                    </div>
-
             </div>
         </div>
     </div>
@@ -165,6 +161,32 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade log_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="card">
+                <h5 class="card-header">Logs</h5>
+                <div class="card-body">
+
+                    <div id="render_console_div" class="form-group">
+                        <textarea class="form-control form-control-sm" rows="12" id="render_console" readonly></textarea>
+                    </div>
+
+                </div>
+                <div class="card-footer" id="git_console_div" style="display:none">
+                    <textarea class="form-control form-control-sm" rows="5" id="git_console" disabled></textarea>
+                </div>
+                <div class="card-footer">
+                    <button type="button" id="gitlabClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 </div>
 
 <script src="static/js/configpy.js" type="text/javascript" charset="utf-8">

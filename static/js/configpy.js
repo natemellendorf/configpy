@@ -68,6 +68,10 @@ function button_change(){
 $('#action').html('Connect');
 }
 
+function refreshPage(){
+    window.location.reload();
+} 
+
 // SOCKET
 
 socket.on('repoContent', function(msg) {
@@ -87,10 +91,10 @@ socket.on('repoContent', function(msg) {
     text +
     '</select>');
 
-    $('#repo_help').html(
-    '<button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="location.reload()"">Disconnect</button>'
+    $('#action').html('Disconnect');
+    document.getElementById("action").removeEventListener("click", change_repo)
+    document.getElementById("action").addEventListener("click", refreshPage)
 
-    );
     $("#template").attr("disabled",false);
     display_form();
 
@@ -105,12 +109,20 @@ socket.on('render_output', function(msg) {
 
 socket.on('progress_bar', function(value) {
     if (value < 100){
-        $('.progress').fadeIn();
+        $('.progress').show();
         $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value);
     }else{
         $('.progress-bar').css('width', value+'%').attr('aria-valuenow', value);
         $('.progress').fadeOut();
     }
+});
+
+socket.on('render_console', function(log) {
+    $("#render_log_btn").fadeToggle();
+    var render_console = document.getElementById("render_console");
+    render_console.value += (log + '\n');
+    render_console.scrollTop = render_console.scrollHeight;
+    $("#render_log_btn").fadeToggle();
 });
 
 socket.on('console', function(msg) {
@@ -130,26 +142,26 @@ socket.on('git_console', function(msg) {
 
 // END
 
-      // Once repo URL is provided, create a dynamic list of .j2 files in repo and display.
+// Once repo URL is provided, create a dynamic list of .j2 files in repo and display.
 
-      function change_repo() {
-      $('#action').html('Connecting...');
+function change_repo() {
+$('#action').html('Connecting...');
 
-      var selected_repo = document.getElementById("selected_repo").options[document.getElementById('selected_repo').selectedIndex].text;
-      var github_user = document.getElementById("github_user").value;
-      var userRepos = {"selected_repo":selected_repo,"github_user":github_user};
-      
-      socket.emit('getRepo', {"data": JSON.stringify(userRepos)})
+var selected_repo = document.getElementById("selected_repo").options[document.getElementById('selected_repo').selectedIndex].text;
+var github_user = document.getElementById("github_user").value;
+var userRepos = {"selected_repo":selected_repo,"github_user":github_user};
 
-      // Sending user data to website console
-      // socket.emit('console', {'event': userRepos});
+socket.emit('getRepo', {"data": JSON.stringify(userRepos)})
 
-      // Display the website console
-      // display_console();
+// Sending user data to website console
+// socket.emit('console', {'event': userRepos});
 
-      //$("#changerepo").attr("disabled",true);
+// Display the website console
+// display_console();
 
-      };
+//$("#changerepo").attr("disabled",true);
+
+};
 
 
 // Function to dynamically load answer file onto page.
@@ -209,7 +221,7 @@ $(function() {
         async: false;
 
 
-        socket.emit('console', {'event': ['rendering...']});
+        //socket.emit('console', {'event': ['rendering...']});
         socket.emit('render_template', {"data": JSON.stringify(data)});
 
     });
