@@ -1,87 +1,71 @@
-# ConfigPy
+# ConfigPy - Standalone
+
 [![Build Status](https://travis-ci.com/natemellendorf/configpy.svg?branch=master)](https://travis-ci.com/natemellendorf/configpy)
+
 ### Author:
+
 Nate Mellendorf <br>
 [https://www.linkedin.com/in/nathan-mellendorf/](https://www.linkedin.com/in/nathan-mellendorf/)<br>
 
 ## Overview:
-ConfigPy was built to address the need for infrastructure as code for Junos devices.
-It leverages Docker, Flask, SocketIO, Redis, PyEZ, Paramiko, and GitLab to:
-- Create an OpenSSH server to listen for outbound SSH sessions from Junos devices.
-- Once established, use PyEZ to gather facts about the connected Junos device.
-- Store these device facts in a short lived centralized database.
-- Perform additional tasks with PyEZ, such as auditing the Junos firmware and updating it.
-- Sync the device config with a config file stored in a remote repository.
-- If clustering is desired, leverage an op script and event manager to cluster the device.
-- Leverage Jinja2 and YAML templating to create new configs, and push them to connected devices.
 
-## Demos:
-#### Template Rendering:
-![ConfigPy Demo_1](demo/ConfigPy_render.gif)
+**ConfigPy - Standalone** is just the rendering portion of the ConfigPy application.
+It does not require the configpy-node or a Juniper device to function.
 
-#### Device Config Sync
-![ConfigPy Demo_2](demo/ConfigPy_demo.gif)
+In short, you can leverage standalone to quickly render your Jinja2 templates on the fly.
 
-#### Notes from the author
-ConfigPy was my first personal Python project, which I think is glaring when reviewing the code.
-It introduced me to every dependancy that it leverages. Python (Flask, PyEZ, Requests), Redis, JavaScript, JQuery, CSS (Bootstrap), etc.
-In it's current state, I would not recommend this project be placed outside of a lab environment.
+## Requirments
 
-### Deployment:
-#### Automatic
-[Please leverage this compose file to launch ConfigPy](../master/docker-compose.yml)
-```
-#docker swarm init
-docker stack deploy -c Docker-Compose.yml configpy
-```
-#### Manual
-```
-docker run --name redis \
-  -d --restart always \
-  -p 6379:6379 \
-  --network production \
-  redis
+[GitHub Oauth Application](https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/) for ConfigPy.
 
-docker run --name configpy-node \
-  -d --restart always \
-  -p 9000:9000 \
-  --network production \ 
-  natemellendorf/configpy-node \  
-  -user ztp \
-  -password **secret** \ 
-  -configpy_url http://10.0.0.204:80 \
-  -redis_url redis \
-  -repo_uri http://gitlab:8080/networking/configs \ 
-  -repo_auth_token **secret** \
-  -software_location http://10.0.0.204/static/firmware/ \ 
-  -srx_firmware **shouldContainVersionInName-18.2R1.9.tgz \
-  -srx_firmware_checksum **MD5checksum**
-  
-docker run --detach --hostname gitlab.example.com \
---publish 443:443 \
---publish 80:80 \
---publish 22:22 \
---name gitlab \
---restart always \
---volume /srv/gitlab/config:/etc/gitlab \
---volume /srv/gitlab/logs:/var/log/gitlab \
---volume /srv/gitlab/data:/var/opt/gitlab \
-gitlab/gitlab-ce:latest
+A working Oauth configuration example:
 
-docker run --name configpy \
-  -d --restart always \
-  -e REDIS_URI=redis \
-  -p 80:80 \
-  --volume c:/dockerstorage/configpy/firmware:/home/devops/configpy/static/firmware \
-  --network production \
-  natemellendorf/configpy
 ```
-  
-### How to configure your Juniper device to connect
-Remember to permit this traffic inbound on your mgmt interface.
+Homepage URL:
+http://127.0.0.1/render
+
+Authorization callback URL:
+http://127.0.0.1/github-callback
 ```
-set system services outbound-ssh client ztp device-id test-srx
-set system services outbound-ssh client ztp services netconf
-set system services outbound-ssh client ztp <DockerHost> port 9000
-set system services outbound-ssh client ztp <DockerHost> timeout 120
+
+
+## How does it work?
+
+After being supplied with your GitHub OAuth App settings, ConfigPy will search your repositories for readme files that contain the word "configpy". These repositories are expected to have .j2 and .yml template files within their root directory.
+
+Your YAML answer files should be named to match their respective Jinja2 templates.
+
+Example:
+- Template: base_ios_config.j2
+- Answers: base_ios_config.yml
+
+### Include Statements
+
+Template files can leverage multiple include statements.
+This is helpful in creating smaller, reusable Jinja templates.
+
 ```
+{% include "default_firewall_rules.j2" %}
+{% include "aaa_settings.j2" %}
+{% include "logging_settings.j2" %}
+```
+
+## Deployment:
+
+1. Create a private or organization GitHub OAuth application
+2. Clone the repository and change your working directory
+    ```
+    git clone git@github.com:natemellendorf/configpy.git
+    cd configpy
+    ```
+
+3. Update the [docker-compose](docker-compose.yml) file with your GitHub Oauth Client ID and Client Secret. 
+   - If you're using an OAuth app for your organization, then update and uncomment the GITHUB_ORG environment variable.
+   - It's also recommended that you update "NotaSecurePassword" to something more secure.
+
+4. Launch docker-compose to start ConfigPy - Standalone
+    ```
+    docker-compose up
+    ```
+
+5. Browse to http://127.0.0.1:8000/render
