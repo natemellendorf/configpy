@@ -53,11 +53,11 @@ This is helpful in creating smaller, reusable Jinja templates.
 ## Deployment:
 
 1. Create a private or organization GitHub OAuth application
-2. Clone the repository, checkout this branch, and change your working directory
+2. Clone the repository, change your working directory, and checkout this branch
     ```
     git clone git@github.com:natemellendorf/configpy.git
     cd configpy
-    fit checkout configpy/standalone
+    git checkout configpy/standalone
     ```
 
 3. Update the [docker-compose](docker-compose.yml) file with your GitHub Oauth Client ID and Client Secret. 
