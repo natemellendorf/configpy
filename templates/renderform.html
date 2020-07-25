@@ -86,6 +86,7 @@
         <div class="card-header">
             <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
             <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".gitlab">Push</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".nornir_modal">Nornir</button>
         </div>
         <div class="card-body">
             <div class="row">
@@ -185,6 +186,28 @@
     </div>
 </div>
 
+
+<div class="modal fade nornir_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="card">
+                <h5 class="card-header">Nornir</h5>
+                <div class="card-body">
+
+                    <button type="button" id="gitlabSubmit" onclick="sendToNornir()" class="btn btn-secondary">Push</button>
+
+                    <div id="nornir_console_div" class="form-group">
+                        <textarea class="form-control form-control-sm" rows="12" id="nornir_console" readonly></textarea>
+                    </div>
+
+                </div>
+                <div class="card-footer">
+                    <button type="button" id="nornirClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
 </div>

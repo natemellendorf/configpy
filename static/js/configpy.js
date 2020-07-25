@@ -233,3 +233,17 @@ function copy() {
   copy_render.select();
   document.execCommand("copy");
 };
+
+function sendToNornir() {
+    var copy_render = document.getElementById("complete").value;
+    var data = {"config": copy_render} 
+    socket.emit('nornirPush', {"data": JSON.stringify(data)});
+
+  };
+
+socket.on('nornir_result', function(msg) {
+    console.log(msg);
+    var nornir_debug_log = document.getElementById("nornir_console");
+    nornir_debug_log.value += (msg["config"] + '\n');
+    nornir_debug_log.scrollTop = nornir_debug_log.scrollHeight;
+});
