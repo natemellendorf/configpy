@@ -68,7 +68,9 @@ socketio = SocketIO(app)
 
 if not os.path.exists("logs"):
     os.mkdir("logs")
-file_handler = RotatingFileHandler("logs/configpy.log", maxBytes=1000000, backupCount=10)
+file_handler = RotatingFileHandler(
+    "logs/configpy.log", maxBytes=1000000, backupCount=10
+)
 file_handler.setFormatter(
     logging.Formatter(
         "%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]"
@@ -632,21 +634,19 @@ def dsc(data):
     dbcheck_logic(data)
 
 
-
-
 @socketio.on("nornirPush")
 def configureDevice(data):
     emit("progress_bar", {"status": "success", "progress": 10})
 
-    answers = yaml.safe_dump(json.loads(data.get("data", '{}')))
-    answers_dict = json.loads(data.get("data", '{}'))
+    answers = yaml.safe_dump(json.loads(data.get("data", "{}")))
+    answers_dict = json.loads(data.get("data", "{}"))
     config = answers_dict["config"]
     template_wd = f"repo/"
 
     dry_run = False
     if "dry_run" in answers_dict:
         dry_run = True
-    
+
     emit("nornir_result", f"Dry Run: {dry_run}")
     emit("progress_bar", {"status": "success", "progress": 20})
     app.logger.info(f"Setting template directory to: {template_wd}")
@@ -680,8 +680,6 @@ def configureDevice(data):
         emit("nornir_result", str(e))
         return
 
-    #print(rendered_template)
-
     try:
         emit("nornir_result", f"Make Nornir working directory: Creating...")
         emit("progress_bar", {"status": "success", "progress": 35})
@@ -711,7 +709,7 @@ def configureDevice(data):
     try:
         with open(f"{working_dir}/host.yaml", "w") as file:
             file.write(rendered_template)
-        
+
         emit("progress_bar", {"status": "success", "progress": 50})
 
     except OSError:
@@ -731,17 +729,14 @@ def configureDevice(data):
         emit("nornir_result", f"Successfully created: {working_dir}/host.yaml")
         emit("progress_bar", {"status": "success", "progress": 60})
 
-
     # Init Nornir
     nr = InitNornir(
-    core={"num_workers": 2},
-    dry_run= dry_run,
-    inventory={
-        "plugin": "nornir.plugins.inventory.simple.SimpleInventory",
-        "options": {
-            "host_file": f"{working_dir}/host.yaml"
-            }
-        }
+        core={"num_workers": 2},
+        dry_run=dry_run,
+        inventory={
+            "plugin": "nornir.plugins.inventory.simple.SimpleInventory",
+            "options": {"host_file": f"{working_dir}/host.yaml"},
+        },
     )
 
     emit("progress_bar", {"status": "success", "progress": 70})
@@ -755,7 +750,7 @@ def configureDevice(data):
         r = task.run(
             name="Loading config onto device...",
             task=napalm_configure,
-            configuration=config
+            configuration=config,
         )
 
         return r
@@ -785,12 +780,11 @@ def configureDevice(data):
     else:
         app.logger.info(f"Successfully deleted the directory {working_dir}")
         emit("nornir_result", f"Successfully deleted the directory {working_dir}")
-    
+
     # FIN
-    emit("nornir_result", 10*"-")
+    emit("nornir_result", 10 * "-")
     emit("nornir_reset")
     emit("progress_bar", {"status": "success", "progress": 100})
-
 
 
 @socketio.on("gitlabPush")
