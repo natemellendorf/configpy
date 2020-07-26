@@ -205,7 +205,6 @@ $(function () {
 });
 
 // Function to take provided answers, and produce the final render.
-
 $(function () {
     $("button[name=process]").click(
         function () {
@@ -240,35 +239,53 @@ function sendToNornir() {
 
 };
 
+$(function () {
+    $("input[id=hostname]").change(function () {
+        var hostname = document.getElementById("hostname");
+        if (!hostname.checkValidity()) {
+            document.getElementById("demo").innerHTML = hostname.validationMessage;
+            document.getElementById("nornirSubmit").disabled = true;
+        } else {
+            document.getElementById("demo").innerHTML = "Input OK";
+        }
+    });
+});
 
 $(function () {
     $("button[id=nornirSubmit]").click(
         function () {
 
-            document.getElementById("nornirSubmit").disabled = true;
-            document.getElementById("nornirSubmit").innerHTML  = "Running...";
-            $("#nornir_console").fadeIn();
+            if ($("#nornir_form")[0].checkValidity()) {
 
-            // Serialize the form data
-            var config = document.getElementById("complete").value;
-            var form = $("form[name=nornir_form]").serializeArray();
+                // If form values are valid
+                document.getElementById("nornirSubmit").disabled = true;
+                document.getElementById("nornirSubmit").innerHTML = "Running...";
+                $("#nornir_console").fadeIn();
 
-            // Add dropdown values to form (Because they're disabled)
-            form.push({ "name": "config", "value": config });
+                // Serialize the form data
+                var config = document.getElementById("complete").value;
+                var form = $("form[name=nornir_form]").serializeArray();
 
-            // Create new dict for next step
-            var result = {};
+                // Add dropdown values to form (Because they're disabled)
+                form.push({ "name": "config", "value": config });
 
-            // Serialize form data, and create new array for key, value pairs from it.
-            $.each($("form[name=nornir_form]").serializeArray(), function () {
-                result[this.name] = this.value;
-            });
+                // Create new dict for next step
+                var result = {};
 
-            result.config = config;
+                // Serialize form data, and create new array for key, value pairs from it.
+                $.each($("form[name=nornir_form]").serializeArray(), function () {
+                    result[this.name] = this.value;
+                });
 
-            // Emit the new dict to Flask for processing
-            socket.emit('nornirPush', { "data": JSON.stringify(result) });
+                result.config = config;
 
+                // Emit the new dict to Flask for processing
+                socket.emit('nornirPush', { "data": JSON.stringify(result) });
+
+            } else {
+                // Form values are not valid
+                $("#nornir_form")[0].reportValidity()
+            };
         });
 });
 
@@ -280,6 +297,6 @@ socket.on('nornir_result', function (msg) {
 });
 
 socket.on('nornir_reset', function () {
-    document.getElementById("nornirSubmit").innerHTML  = "Apply Config";
+    document.getElementById("nornirSubmit").innerHTML = "Apply Config";
     document.getElementById("nornirSubmit").disabled = false;
 });

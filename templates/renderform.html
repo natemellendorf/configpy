@@ -223,7 +223,7 @@
                             <label for="hostname" class="col-sm-2 col-form-label col-form-label-sm">Hostname</label>
                             <div class="col-sm-10">
                                 <input type="input" class="form-control form-control-sm" name="hostname" id="hostname"
-                                    placeholder="device.fqdn.local" required>
+                                    placeholder="device.fqdn.local" pattern="[A-Za-z0-9.]+" required>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -231,15 +231,20 @@
                             <div class="col-sm-10">
                                 <select name="platform" id="platform" class="form-control form-control-sm" required>
                                     <option>junos</option>
-                                    <option>cisco</option>
+                                    <option>ios</option>
+                                    <option>iosxr</option>
+                                    <option>nxos</option>
+                                    <option>eos</option>
                                 </select>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label for="port" class="col-sm-2 col-form-label col-form-label-sm">Port</label>
                             <div class="col-sm-10">
-                                <input type="input" class="form-control form-control-sm" name="port" id="username"
-                                    placeholder="port" value="22" required>
+                                <input type="input" class="form-control form-control-sm" name="port" id="port"
+                                    placeholder="port" value="22"
+                                    pattern="^()([1-9]|[1-5]?[0-9]{2,4}|6[1-4][0-9]{3}|65[1-4][0-9]{2}|655[1-2][0-9]|6553[1-5])$"
+                                    required>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -277,8 +282,8 @@
                             aria-valuemax="100"></div>
                     </div>
                     <div id="nornir_console_div" class="form-group">
-                        <textarea class="form-control form-control-sm" rows="8" id="nornir_console"
-                            style="display:none" readonly></textarea>
+                        <textarea class="form-control form-control-sm" rows="8" id="nornir_console" style="display:none"
+                            readonly></textarea>
                     </div>
                 </div>
                 <div class="card-footer">
