@@ -68,7 +68,7 @@ socketio = SocketIO(app)
 
 if not os.path.exists("logs"):
     os.mkdir("logs")
-file_handler = RotatingFileHandler("logs/microblog.log", maxBytes=10240, backupCount=10)
+file_handler = RotatingFileHandler("logs/configpy.log", maxBytes=1000000, backupCount=10)
 file_handler.setFormatter(
     logging.Formatter(
         "%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]"
@@ -636,16 +636,15 @@ def dsc(data):
 
 @socketio.on("nornirPush")
 def configureDevice(data):
-    data = json.loads(data["data"])
-
-    #answers = data.get("answers")
-    answers = '{"hostname": "10.10.0.1", "username": "", "password": "", "platform": "junos", "port": 22}'
-    #print(yaml.safe_dump(json.loads(answers)))
-    answers = yaml.safe_dump(json.loads(answers))
+    answers = yaml.safe_dump(json.loads(data.get("data", '{}')))
+    answers_dict = json.loads(data.get("data", '{}'))
+    config = answers_dict["config"]
 
     template_wd = f"repo/"
+
     app.logger.info(f"Setting template directory to: {template_wd}")
     emit("render_console", f"Setting template directory to: {template_wd}")
+
     env = Environment(
         loader=FileSystemLoader(template_wd), trim_blocks=True, lstrip_blocks=True
     )
@@ -671,7 +670,7 @@ def configureDevice(data):
         emit("nornir_console", str(e))
         return
 
-    print(rendered_template)
+    #print(rendered_template)
 
     try:
         epoch_time = str(time.time())
@@ -741,11 +740,11 @@ def configureDevice(data):
         return r
 
     # Push config to device
-    r = nr.run(update_config, config=data["config"])
+    r = nr.run(update_config, config=config)
 
     # Return results
-    app.logger.info(f"{print_result(r)}")
-    emit("nornir_console", f"{print_result(r)}")
+    app.logger.info(f'{r["device"]}')
+    emit("nornir_console", f'{r["device"]}')
 
     # Cleanup our workspace
     try:

@@ -194,7 +194,66 @@
                 <h5 class="card-header">Nornir</h5>
                 <div class="card-body">
 
-                    <button type="button" id="gitlabSubmit" onclick="sendToNornir()" class="btn btn-secondary">Push</button>
+                    <form name="nornir_form" id=nornir_form action="">
+                        <div class="form-group row">
+                          <label for="hostname" class="col-sm-2 col-form-label col-form-label-sm">Hostname</label>
+                          <div class="col-sm-10">
+                            <input type="input" class="form-control form-control-sm" name="hostname" id="hostname" placeholder="device.fqdn.local">
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="platform" class="col-sm-2 col-form-label col-form-label-sm">Platform</label>
+                            <div class="col-sm-10">
+                                <select name="platform" id="platform" class="form-control form-control-sm">
+                                    <option>junos</option>
+                                    <option>cisco</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="port" class="col-sm-2 col-form-label col-form-label-sm">Port</label>
+                            <div class="col-sm-10">
+                              <input type="input" class="form-control form-control-sm" name="port" id="username" placeholder="port" value="22">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="username" class="col-sm-2 col-form-label col-form-label-sm">Username</label>
+                          <div class="col-sm-10">
+                            <input type="input" class="form-control form-control-sm" name="username" id="username" placeholder="username">
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="password" class="col-sm-2 col-form-label col-form-label-sm">Password</label>
+                            <div class="col-sm-10">
+                              <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="password">
+                            </div>
+                        </div>
+                        <fieldset class="form-group">
+                          <div class="row">
+                            <legend class="col-form-label col-sm-2 pt-0 col-form-label-sm">Expectation</legend>
+                            <div class="col-sm-10">
+                              <div class="form-check">
+                                <input class="form-check-input form-control-sm" type="radio" name="dry_run" id="dry_run" value="True" checked>
+                                <label class="form-check-label col-form-label-sm" for="dry_run">
+                                  Dry Run
+                                </label>
+                              </div>
+                              <div class="form-check">
+                                <input class="form-check-input form-control-sm" type="radio" name="dry_run" id="dry_run" value="True">
+                                <label class="form-check-label col-form-label-sm" for="dry_run">
+                                  Run Task
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </fieldset>
+
+                        <div class="form-group row">
+                          <div class="col-sm-10">
+                            <button type="button" id="nornirSubmit" class="btn btn-secondary">Apply Config</button>
+                          </div>
+                        </div>
+                      </form>
 
                     <div id="nornir_console_div" class="form-group">
                         <textarea class="form-control form-control-sm" rows="12" id="nornir_console" readonly></textarea>

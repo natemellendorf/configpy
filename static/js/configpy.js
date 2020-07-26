@@ -241,6 +241,39 @@ function sendToNornir() {
 
   };
 
+
+  $(function() {
+    $("button[id=nornirSubmit]").click(
+      function() {
+
+        document.getElementById("nornirSubmit").disabled = true; 
+
+        // Serialize the form data
+        var config = document.getElementById("complete").value;
+        var form = $("form[name=nornir_form]").serializeArray();
+
+        // Add dropdown values to form (Because they're disabled)
+        form.push({"name": "config", "value": config});
+
+        // Create new dict for next step
+        var result = {};
+
+        // Serialize form data, and create new array for key, value pairs from it.
+        $.each($("form[name=nornir_form]").serializeArray(), function() {
+            result[this.name] = this.value;
+        });
+
+        result.config = config;
+
+        //alert(JSON.stringify(result));
+
+        // Emit the new dict to Flask for processing
+        socket.emit('nornirPush', {"data": JSON.stringify(result)});
+
+    });
+});
+
+
 socket.on('nornir_result', function(msg) {
     console.log(msg);
     var nornir_debug_log = document.getElementById("nornir_console");
