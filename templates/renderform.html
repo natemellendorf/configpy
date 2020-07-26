@@ -13,19 +13,21 @@
                 <div class="form-group">
                     <label for="selectRepos">Repositories</label>
                     <select class="form-control" id="selected_repo">
-                    {% for repo in foundrepos %}
-                    <option value="{{ repo.url }}">{{ repo.name }}</option>
-                    {% endfor %}
+                        {% for repo in foundrepos %}
+                        <option value="{{ repo.url }}">{{ repo.name }}</option>
+                        {% endfor %}
                     </select>
                     <small>Select a repo with .j2 and .yaml files</small>
                     <input id="github_user" type="hidden" value="{{g.user.github_login}}">
-                  </div>
+                </div>
                 {% endif %}
 
-                    <div id="repo_help" class="card-body">
-                        <button id="action" type="button" class="btn btn-secondary btn-lg btn-block" onclick="change_repo()">Connect</button>
-                        <button id="render_log_btn" type="button" class="btn btn-outline-secondary btn-lg btn-block" data-toggle="modal" data-target=".log_modal">Logs</button>
-                    </div>
+                <div id="repo_help" class="card-body">
+                    <button id="action" type="button" class="btn btn-secondary btn-lg btn-block"
+                        onclick="change_repo()">Connect</button>
+                    <button id="render_log_btn" type="button" class="btn btn-outline-secondary btn-lg btn-block"
+                        data-toggle="modal" data-target=".log_modal">Logs</button>
+                </div>
             </div>
         </div>
     </div>
@@ -44,17 +46,22 @@
                     <p id="pre_answers"></p>
                     <div id="answers_div" class="form-group" required style="display:none">
                         <label for="dynamic_af">YAML Answers</label>
-                        <small><a href="https://codebeautify.org/yaml-validator" target="_blank"> (validator)</a> </small>
-                        <textarea class="form-control" name="dynamic_af" id="dynamic_af" rows="10" placeholder="Answers must be in YAML format." required disabled></textarea>
+                        <small><a href="https://codebeautify.org/yaml-validator" target="_blank"> (validator)</a>
+                        </small>
+                        <textarea class="form-control" name="dynamic_af" id="dynamic_af" rows="10"
+                            placeholder="Answers must be in YAML format." required disabled></textarea>
                     </div>
                 </form>
                 <div id="render_button" class="form-group" style="display:none">
                     <button name="process" id="process" class="btn btn-secondary">Render</button>
-                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-backdrop="static" data-toggle="modal" data-target=".edit">Edit</button>
+                    <button type="button" class="btn btn-secondary" onclick="update_big()" data-backdrop="static"
+                        data-toggle="modal" data-target=".edit">Edit</button>
                 </div>
 
                 <div class="progress" id="progress_bar_parent" style="display:none">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" id="progress_bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" id="progress_bar"
+                        role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    </div>
                 </div>
 
             </div>
@@ -69,11 +76,14 @@
                 <h5 class="card-header">Edit</h5>
                 <div class="card-body">
                     <form>
-                    <div class="form-group">
-                    <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30" placeholder="Answers must be in YAML format." required disabled></textarea>
-                    </div>
-                    <button name="button" id="process_1" class="btn btn-secondary" onclick="update_small()" data-dismiss="modal">Save</button>
-                        <button type="button" id="editClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <div class="form-group">
+                            <textarea class="form-control" name="dynamic_af" id="dynamic_af_large" rows="30"
+                                placeholder="Answers must be in YAML format." required disabled></textarea>
+                        </div>
+                        <button name="button" id="process_1" class="btn btn-secondary" onclick="update_small()"
+                            data-dismiss="modal">Save</button>
+                        <button type="button" id="editClose" class="btn btn-secondary"
+                            data-dismiss="modal">Close</button>
                     </form>
                 </div>
             </div>
@@ -85,13 +95,15 @@
     <div class="card">
         <div class="card-header">
             <button type="button" id="copy" name="process" class="btn btn-secondary" onclick="copy()">Copy</button>
-            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".gitlab">Push</button>
-            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static" data-target=".nornir_modal">Nornir</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static"
+                data-target=".gitlab" style="display:none">Push</button>
+            <button type="button" class="btn btn-secondary" data-toggle="modal" data-backdrop="static"
+                data-target=".nornir_modal">Nornir</button>
         </div>
         <div class="card-body">
             <div class="row">
                 <p id="post_process"></p>
-                    <textarea id="complete" class="form-control" rows="20"></textarea>
+                <textarea id="complete" class="form-control" rows="20"></textarea>
             </div>
         </div>
     </div>
@@ -106,17 +118,22 @@
                     <form>
                         <div class="form-group">
                             <label for="configRepo">Remote Repo</label>
-                            <input type="text" class="form-control form-control-sm" id="configRepo" aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs" required>
+                            <input type="text" class="form-control form-control-sm" id="configRepo"
+                                aria-describedby="Remote Repository" value="http://gitlab:8080/networking/configs"
+                                required>
                         </div>
                         <div class="form-group">
                             <label for="gitlabToken">Repo API Token</label>
-                            <input type="password" class="form-control form-control-sm" id="gitlabToken" placeholder="Token" value="rHpKJCVzx565sHR48CUb" required>
+                            <input type="password" class="form-control form-control-sm" id="gitlabToken"
+                                placeholder="Token" value="rHpKJCVzx565sHR48CUb" required>
                         </div>
 
                         <div class="form-group">
                             <label for="clientID">SNMP Contact ID</label>
-                            <input type="text" class="form-control form-control-sm" id="clientID" aria-describedby="Contact ID" placeholder="" value="" required>
-                            <small id="cidHelp" class="form-text text-muted">Should be a number, and will be the directory used to store the config.</small>
+                            <input type="text" class="form-control form-control-sm" id="clientID"
+                                aria-describedby="Contact ID" placeholder="" value="" required>
+                            <small id="cidHelp" class="form-text text-muted">Should be a number, and will be the
+                                directory used to store the config.</small>
                         </div>
 
                         <p class="h5">SRX <small class="text-muted">Firewalls</small></p>
@@ -124,35 +141,41 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label for="node0serialNumber">Node0 - Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" id="node0serialNumber" placeholder="">
+                                <input type="text" class="form-control form-control-sm" id="node0serialNumber"
+                                    placeholder="">
                                 <small class="form-text text-muted">Serial number of the primary node</small>
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="node1serialNumber">Node1 - Serial Number</label>
-                                <input type="text" class="form-control form-control-sm" id="node1serialNumber" placeholder="">
+                                <input type="text" class="form-control form-control-sm" id="node1serialNumber"
+                                    placeholder="">
                                 <small class="form-text text-muted">Serial number of the secondary node</small>
                             </div>
                         </div>
 
                         <div class="form-group">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="ztp" checked>
-                            <label class="form-check-label" for="ztp">
-                                Stage for ZTP
-                            </label>
-                            <small class="form-text text-muted">If the device checks in with no contact ID, use the ID provided above.</small>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ztp" checked>
+                                <label class="form-check-label" for="ztp">
+                                    Stage for ZTP
+                                </label>
+                                <small class="form-text text-muted">If the device checks in with no contact ID, use the
+                                    ID provided above.</small>
                             </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="cluster" checked>
-                            <label class="form-check-label" for="cluster">
-                                Enable clustering
-                            </label>
-                            <small class="form-text text-muted">When checked, the SRX will enable clustering and reboot.</small>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="cluster" checked>
+                                <label class="form-check-label" for="cluster">
+                                    Enable clustering
+                                </label>
+                                <small class="form-text text-muted">When checked, the SRX will enable clustering and
+                                    reboot.</small>
                             </div>
                         </div>
 
-                        <button type="button" id="gitlabSubmit" onclick="gitlabPush()" class="btn btn-secondary">Push</button>
-                        <button type="button" id="gitlabClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" id="gitlabSubmit" onclick="gitlabPush()"
+                            class="btn btn-secondary">Push</button>
+                        <button type="button" id="gitlabClose" class="btn btn-secondary"
+                            data-dismiss="modal">Close</button>
                     </form>
                 </div>
                 <div class="card-footer" id="git_console_div" style="display:none">
@@ -163,7 +186,8 @@
     </div>
 </div>
 
-<div class="modal fade log_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+<div class="modal fade log_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="card">
@@ -171,7 +195,8 @@
                 <div class="card-body">
 
                     <div id="render_console_div" class="form-group">
-                        <textarea class="form-control form-control-sm" rows="12" id="render_console" readonly></textarea>
+                        <textarea class="form-control form-control-sm" rows="12" id="render_console"
+                            readonly></textarea>
                     </div>
 
                 </div>
@@ -179,32 +204,32 @@
                     <textarea class="form-control form-control-sm" rows="5" id="git_console" disabled></textarea>
                 </div>
                 <div class="card-footer">
-                    <button type="button" id="gitlabClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" id="gitlabClose" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-
-<div class="modal fade nornir_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel" aria-hidden="true">
+<div class="modal fade nornir_modal" tabindex="-1" role="dialog" aria-labelledby="myExtraLargeModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="card">
                 <h5 class="card-header">Nornir</h5>
                 <div class="card-body">
-
                     <form name="nornir_form" id=nornir_form action="">
                         <div class="form-group row">
-                          <label for="hostname" class="col-sm-2 col-form-label col-form-label-sm">Hostname</label>
-                          <div class="col-sm-10">
-                            <input type="input" class="form-control form-control-sm" name="hostname" id="hostname" placeholder="device.fqdn.local">
-                          </div>
+                            <label for="hostname" class="col-sm-2 col-form-label col-form-label-sm">Hostname</label>
+                            <div class="col-sm-10">
+                                <input type="input" class="form-control form-control-sm" name="hostname" id="hostname"
+                                    placeholder="device.fqdn.local" required>
+                            </div>
                         </div>
                         <div class="form-group row">
                             <label for="platform" class="col-sm-2 col-form-label col-form-label-sm">Platform</label>
                             <div class="col-sm-10">
-                                <select name="platform" id="platform" class="form-control form-control-sm">
+                                <select name="platform" id="platform" class="form-control form-control-sm" required>
                                     <option>junos</option>
                                     <option>cisco</option>
                                 </select>
@@ -213,55 +238,51 @@
                         <div class="form-group row">
                             <label for="port" class="col-sm-2 col-form-label col-form-label-sm">Port</label>
                             <div class="col-sm-10">
-                              <input type="input" class="form-control form-control-sm" name="port" id="username" placeholder="port" value="22">
+                                <input type="input" class="form-control form-control-sm" name="port" id="username"
+                                    placeholder="port" value="22" required>
                             </div>
                         </div>
                         <div class="form-group row">
-                          <label for="username" class="col-sm-2 col-form-label col-form-label-sm">Username</label>
-                          <div class="col-sm-10">
-                            <input type="input" class="form-control form-control-sm" name="username" id="username" placeholder="username">
-                          </div>
+                            <label for="username" class="col-sm-2 col-form-label col-form-label-sm">Username</label>
+                            <div class="col-sm-10">
+                                <input type="input" class="form-control form-control-sm" name="username" id="username"
+                                    placeholder="username" required>
+                            </div>
                         </div>
                         <div class="form-group row">
                             <label for="password" class="col-sm-2 col-form-label col-form-label-sm">Password</label>
                             <div class="col-sm-10">
-                              <input type="password" class="form-control form-control-sm" name="password" id="password" placeholder="password">
+                                <input type="password" class="form-control form-control-sm" name="password"
+                                    id="password" placeholder="password" required>
                             </div>
                         </div>
-                        <fieldset class="form-group">
-                          <div class="row">
-                            <legend class="col-form-label col-sm-2 pt-0 col-form-label-sm">Expectation</legend>
-                            <div class="col-sm-10">
-                              <div class="form-check">
-                                <input class="form-check-input form-control-sm" type="radio" name="dry_run" id="dry_run" value="True" checked>
-                                <label class="form-check-label col-form-label-sm" for="dry_run">
-                                  Dry Run
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="dry_run" id="dry_run" checked>
+                                <label class="form-check-label" for="dry_run">
+                                    Dry Run
                                 </label>
-                              </div>
-                              <div class="form-check">
-                                <input class="form-check-input form-control-sm" type="radio" name="dry_run" id="dry_run" value="True">
-                                <label class="form-check-label col-form-label-sm" for="dry_run">
-                                  Run Task
-                                </label>
-                              </div>
                             </div>
-                          </div>
-                        </fieldset>
+                        </div>
 
                         <div class="form-group row">
-                          <div class="col-sm-10">
-                            <button type="button" id="nornirSubmit" class="btn btn-secondary">Apply Config</button>
-                          </div>
+                            <div class="col-sm-10">
+                                <button type="button" id="nornirSubmit" class="btn btn-secondary">Apply Config</button>
+                            </div>
                         </div>
-                      </form>
-
-                    <div id="nornir_console_div" class="form-group">
-                        <textarea class="form-control form-control-sm" rows="12" id="nornir_console" readonly></textarea>
+                    </form>
+                    <div class="progress form-group" id="progress_bar_parent" style="display:none">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                            id="progress_bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0"
+                            aria-valuemax="100"></div>
                     </div>
-
+                    <div id="nornir_console_div" class="form-group">
+                        <textarea class="form-control form-control-sm" rows="8" id="nornir_console"
+                            style="display:none" readonly></textarea>
+                    </div>
                 </div>
                 <div class="card-footer">
-                    <button type="button" id="nornirClose"  class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" id="nornirClose" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

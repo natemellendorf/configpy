@@ -636,87 +636,106 @@ def dsc(data):
 
 @socketio.on("nornirPush")
 def configureDevice(data):
+    emit("progress_bar", {"status": "success", "progress": 10})
+
     answers = yaml.safe_dump(json.loads(data.get("data", '{}')))
     answers_dict = json.loads(data.get("data", '{}'))
     config = answers_dict["config"]
-
     template_wd = f"repo/"
 
+    dry_run = False
+    if "dry_run" in answers_dict:
+        dry_run = True
+    
+    emit("nornir_result", f"Dry Run: {dry_run}")
+    emit("progress_bar", {"status": "success", "progress": 20})
     app.logger.info(f"Setting template directory to: {template_wd}")
-    emit("render_console", f"Setting template directory to: {template_wd}")
 
     env = Environment(
         loader=FileSystemLoader(template_wd), trim_blocks=True, lstrip_blocks=True
     )
 
     try:
+        emit("progress_bar", {"status": "success", "progress": 25})
+        emit("nornir_result", f"Render Nornir Inventory file: Creating...")
+        app.logger.info(f"Render Nornir Inventory file: Creating...")
+
         # Load data from YAML into Python dictionary
         answerfile = yaml.load(answers, Loader=yaml.SafeLoader)
         # Load Jinja2 template
         template = env.get_template("host.j2")
+
         # Render the template
         rendered_template = template.render(answerfile)
 
-        app.logger.info(f"Render Complete!")
-        emit("nornir_console", f"Render Complete!")
-        emit("nornir_console", str(rendered_template))
-        emit("progress_bar", {"status": "success", "progress": 100})
+        app.logger.info(f"Render Nornir Inventory file: Complete")
+        emit("nornir_result", f"Render Nornir Inventory file: Complete")
+        emit("progress_bar", {"status": "success", "progress": 30})
 
     except Exception as e:
         # If errors, return them to UI.
         app.logger.info(f"Error Rendering: {e}")
         emit("progress_bar", {"status": "danger", "progress": 100})
-        emit("nornir_console", f"Error Rendering: {e}")
-        emit("nornir_console", str(e))
+        emit("nornir_result", f"Render Nornir Inventory file: Failed")
+        emit("nornir_result", str(e))
         return
 
     #print(rendered_template)
 
     try:
+        emit("nornir_result", f"Make Nornir working directory: Creating...")
+        emit("progress_bar", {"status": "success", "progress": 35})
+
         epoch_time = str(time.time())
         working_dir = f"repo/{epoch_time}"
+
         os.mkdir(working_dir)
+
     except OSError:
         app.logger.error(f"Creation of the directory {epoch_time} failed")
-        emit("nornir_console", f"Creation of the directory {epoch_time} failed")
-        emit("nornir_progress_bar", {"status": "danger", "progress": 100})
+        emit("nornir_result", f"Make Nornir working directory: Failed")
+        emit("progress_bar", {"status": "danger", "progress": 100})
         return
     except Exception as e:
         app.logger.error(f"Unknown Exception: {e}")
-        emit("nornir_console", f"Unknown Exception: {e}")
-        emit("nornir_progress_bar", {"status": "danger", "progress": 100})
+        emit("nornir_result", f"Make Nornir working directory: Failed")
+        emit("nornir_result", f"Unknown Exception: {e}")
+        emit("progress_bar", {"status": "danger", "progress": 100})
         return
     else:
         app.logger.info(f"Successfully created the directory {epoch_time}")
-        emit("nornir_console", f"Successfully created the directory {epoch_time}")
-        emit("nornir_progress_bar", {"status": "secondary", "progress": 20})
+        emit("nornir_result", f"Make Nornir working directory: Complete")
+        emit("progress_bar", {"status": "success", "progress": 40})
 
     # Create host.yaml for Nornir
     try:
         with open(f"{working_dir}/host.yaml", "w") as file:
             file.write(rendered_template)
+        
+        emit("progress_bar", {"status": "success", "progress": 50})
 
     except OSError:
         app.logger.error(f"Failed to create: {working_dir}/host.yaml")
-        emit("nornir_console", f"Failed to create: {working_dir}/host.yaml")
-        emit("nornir_progress_bar", {"status": "danger", "progress": 100})
+        emit("nornir_result", f"Failed to create: {working_dir}/host.yaml")
+        emit("progress_bar", {"status": "danger", "progress": 100})
         return
 
     except Exception as e:
         app.logger.error(f"Unknown Exception: {e}")
-        emit("nornir_console", f"Unknown Exception: {e}")
-        emit("nornir_progress_bar", {"status": "danger", "progress": 100})
+        emit("nornir_result", f"Unknown Exception: {e}")
+        emit("progress_bar", {"status": "danger", "progress": 100})
         return
 
     finally:
         app.logger.info(f"Successfully created: {working_dir}/host.yaml")
-        emit("nornir_console", f"Successfully created: {working_dir}/host.yaml")
-        emit("nornir_progress_bar", {"status": "secondary", "progress": 20})
+        emit("nornir_result", f"Successfully created: {working_dir}/host.yaml")
+        emit("progress_bar", {"status": "success", "progress": 60})
 
 
     # Init Nornir
     nr = InitNornir(
     core={"num_workers": 2},
+    dry_run= dry_run,
     inventory={
         "plugin": "nornir.plugins.inventory.simple.SimpleInventory",
         "options": {
@@ -725,11 +744,13 @@ def configureDevice(data):
         }
     )
 
+    emit("progress_bar", {"status": "success", "progress": 70})
+
     # Create NAPALM config update task for Nornir
     def update_config(task, **kwargs):
-    
-        app.logger.info(f"Entered update task")
         config = kwargs["config"]
+
+        app.logger.info(f"Starting Nornir update task...")
 
         r = task.run(
             name="Loading config onto device...",
@@ -741,26 +762,34 @@ def configureDevice(data):
 
     # Push config to device
     r = nr.run(update_config, config=config)
+    emit("progress_bar", {"status": "success", "progress": 90})
 
-    # Return results
-    app.logger.info(f'{r["device"]}')
-    emit("nornir_console", f'{r["device"]}')
+    # Log/Return results
+    app.logger.info(f'Failed: {r["device"].failed}')
+    app.logger.info(f'Changed: {r["device"].changed}')
+
+    emit("nornir_result", f'Failed: {r["device"].failed}')
+    emit("nornir_result", f'Changed: {r["device"].changed}')
+    emit("nornir_result", f'{r["device"][1].diff}')
 
     # Cleanup our workspace
     try:
         rmtree(working_dir)
     except Exception as e:
         app.logger.error(f"Deletion of the directory {working_dir} failed")
-        emit("nornir_console", f"Deletion of the directory {working_dir} failed")
+        emit("nornir_result", f"Deletion of the directory {working_dir} failed")
+
+        emit("progress_bar", {"status": "danger", "progress": 100})
 
         return
     else:
         app.logger.info(f"Successfully deleted the directory {working_dir}")
-        emit("nornir_console", f"Successfully deleted the directory {working_dir}")
+        emit("nornir_result", f"Successfully deleted the directory {working_dir}")
     
     # FIN
-    socketio.emit("nornir_result", "Processing...")
-    socketio.emit("nornir_result", data)
+    emit("nornir_result", 10*"-")
+    emit("nornir_reset")
+    emit("progress_bar", {"status": "success", "progress": 100})
 
 
 
