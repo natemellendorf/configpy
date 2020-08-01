@@ -7,6 +7,13 @@ steps:
 - name: Linting
   image: jfloff/alpine-python
   commands:
-  - pip3 install pylint_runner
   - pip3 install -r requirements.txt
+  - pip3 install pylint_runner
   - pylint_runner
+
+- name: Testing
+  image: jfloff/alpine-python
+  commands:
+  - pip3 install -r requirements.txt
+  - pip3 install pytest
+  - pytest ./tests/
