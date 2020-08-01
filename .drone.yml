@@ -5,10 +5,8 @@ name: default
 
 steps:
 - name: Linting
-  image: alpine:3.12.0
+  image: jfloff/alpine-python
   commands:
-  - apk update
-  - apk add python3 py3-pip build-base python3-dev
   - pip3 install pylint_runner
   - pip3 install -r requirements.txt
   - pylint_runner
