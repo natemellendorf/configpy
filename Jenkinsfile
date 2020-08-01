@@ -15,6 +15,7 @@ pipeline {
             agent { 
                 docker {
                     image 'python:3'
+		    args '-u root'
                 }
             }
             steps {
