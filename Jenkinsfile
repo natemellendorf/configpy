@@ -7,7 +7,7 @@ pipeline {
             steps {
                 echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
                 echo "Branch: ${env.BRANCH_NAME}"
-                sh 'alpine -version'
+                sh 'cat /etc/alpine-release'
             }
         }
         stage('Test') {
