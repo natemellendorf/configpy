@@ -16,8 +16,8 @@ pipeline {
             }
             steps {
                 echo "Branch: ${env.BRANCH_NAME}"
-                sh "apk add python3"
-                sh "apk add py3-pip"
+                sh "apk update"
+                sh "apk add python3 py3-pip build-base python3-dev"
                 sh "pip install black"
                 sh "black ."
             }
