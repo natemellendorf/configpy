@@ -1,4 +1,8 @@
 pipeline {
+    environment {
+        PYTHONDONTWRITEBYTECODE = 1
+        PYTHONUNBUFFERED = 1
+	 }
     agent none
     stages {
         stage('Initialization') {
@@ -7,19 +11,16 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build') {
+        stage('Linting') {
             agent { 
                 docker {
-                    image 'alpine:3.12.0'
-                    args '-u root'
+                    image 'python:3'
                 }
             }
             steps {
                 echo "Branch: ${env.BRANCH_NAME}"
-                sh "apk update"
-                sh "apk add python3 py3-pip build-base python3-dev"
-                sh "pip3 install black"
-                //sh "python3 -m black ./"
+                sh "pip install --upgrade --no-cache-dir black"
+                sh "/usr/local/bin/black --check --diff ."
             }
         }
         stage('Test') {
