@@ -21,7 +21,7 @@ pipeline {
             steps {
                 echo "Branch: ${env.BRANCH_NAME}"
                 sh "pip install --upgrade --no-cache-dir black"
-                sh "/usr/local/bin/black --check --diff ."
+                sh "/usr/local/bin/black --check --diff"
             }
         }
         stage('Test') {
