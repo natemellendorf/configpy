@@ -1,13 +1,17 @@
 pipeline {
-    agent {
-        docker { image 'alpine:3.7' }
-    }
+    agent none
     stages {
         stage('Build') {
+            agent { docker 'alpine:3.7' }
             steps {
-                echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
+                checkout scm
+                echo "Running ${env.BUILD_ID}"
                 echo "Branch: ${env.BRANCH_NAME}"
-                sh 'cat /etc/alpine-release'
+                sh 'apk update'
+                sh "apk add python3"
+                sh "apk add py3-pip"
+                sh "pip install black"
+                sh "black ."
             }
         }
         stage('Test') {
