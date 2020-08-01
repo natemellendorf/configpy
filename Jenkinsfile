@@ -6,6 +6,8 @@ pipeline {
         stage('Build') {
             steps {
                 echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
+                echo "Branch: ${env.BRANCH_NAME}"
+                sh 'alpine -version'
             }
         }
         stage('Test') {
@@ -20,4 +22,3 @@ pipeline {
         }
     }
 }
-
