@@ -1,12 +1,6 @@
 pipeline {
     agent none
     stages {
-        stage('Initialization') {
-            agent any
-            steps {
-                checkout scm
-            }
-        }
         stage('Build') {
             agent { 
                 docker 'alpine:3.7' 
@@ -14,6 +8,7 @@ pipeline {
             }
             steps {
                 echo "Branch: ${env.BRANCH_NAME}"
+                checkout scm
                 sh "apk add python3"
                 sh "apk add py3-pip"
                 sh "pip install black"
