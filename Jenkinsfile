@@ -19,7 +19,7 @@ pipeline {
                 sh "apk update"
                 sh "apk add python3 py3-pip build-base python3-dev"
                 sh "pip3 install black"
-                //sh "black ."
+                sh "python3 -m black"
             }
         }
         stage('Test') {
