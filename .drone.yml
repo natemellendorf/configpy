@@ -1,25 +1,13 @@
 ---
 kind: pipeline
+type: docker
 name: default
 
 steps:
-- name: test
-  image: docker:dind
-  volumes:
-  - name: dockersock
-    path: /var/run
+- name: Linting
+  image: alpine:3.12.0
   commands:
-  - sleep 5 # give docker enough time to start
-  - docker ps -a
-
-services:
-- name: docker
-  image: docker:dind
-  privileged: true
-  volumes:
-  - name: dockersock
-    path: /var/run
-
-volumes:
-- name: dockersock
-  temp: {}
+  - apk update
+  - apk add python3 py3-pip build-base python3-dev
+  - pip3 install black
+  - python3 -m black ./
