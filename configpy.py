@@ -17,7 +17,7 @@ from flask_apscheduler import APScheduler
 from nornir import InitNornir
 from nornir.plugins.tasks.data import load_yaml
 from nornir.plugins.tasks.text import template_file
-from nornir.plugins.tasks.networking import napalm_configure, napalm_get
+from nornir.plugins.tasks.networking import napalm_configure, napalm_get, netmiko_send_config, netmiko_save_config
 from nornir.plugins.functions.text import print_result
 from nornir.plugins.tasks import networking
 
@@ -742,21 +742,42 @@ def configureDevice(data):
     emit("progress_bar", {"status": "success", "progress": 70})
 
     # Create NAPALM config update task for Nornir
-    def update_config(task, **kwargs):
+    def junos_update_config(task, **kwargs):
         config = kwargs["config"]
 
         app.logger.info(f"Starting Nornir update task...")
 
         r = task.run(
-            name="Loading config onto device...",
+            name="Junos - Load Config to device...",
             task=napalm_configure,
             configuration=config,
         )
 
         return r
+    
+    def asa_update_config(task, **kwargs):
+        config = kwargs["config"]
+
+        app.logger.info(f"Starting Nornir update task...")
+
+        r = task.run(
+            task=netmiko_send_config,
+            name="ASA - Load Config to device...",
+            config_commands=config)
+
+        task.run(task=netmiko_save_config,
+             name="Saving configuration",
+             cmd="write memory")
+
+        return r
 
     # Push config to device
-    r = nr.run(update_config, config=config)
+    cisco_asa = nr.filter(platform="cisco_asa")
+    r = cisco_asa.run(napalm_get, getters=['get_interfaces_ip'])
+
+    junos = nr.filter(platform="junos")
+    r = junos.run(junos_update_config, config=config)
+
     emit("progress_bar", {"status": "success", "progress": 90})
 
     # Log/Return results
