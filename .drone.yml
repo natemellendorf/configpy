@@ -27,3 +27,19 @@ steps:
 services:
   - name: redis
     image: redis
+
+---
+kind: pipeline
+type: docker
+name: Dry Run
+
+steps:
+- name: Junos
+  image: jfloff/alpine-python
+  commands:
+  - pip3 install nornir
+
+- name: ASAv
+  image: jfloff/alpine-python
+  commands:
+  - pip3 install nornir

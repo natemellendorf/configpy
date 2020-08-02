@@ -747,29 +747,27 @@ def configureDevice(data):
 
         app.logger.info(f"Starting Nornir update task...")
 
-        r = task.run(
+        task.run(
             name="Junos - Load Config to device...",
             task=napalm_configure,
             configuration=config,
         )
-
-        return r
     
     def asa_update_config(task, **kwargs):
         config = kwargs["config"]
 
         app.logger.info(f"Starting Nornir update task...")
 
-        r = task.run(
+        task.run(
             task=netmiko_send_config,
             name="ASA - Load Config to device...",
             config_commands=config)
 
-        task.run(task=netmiko_save_config,
-             name="Saving configuration",
-             cmd="write memory")
+        task.run(
+            task=netmiko_save_config,
+            name="Saving configuration",
+            cmd="write memory")
 
-        return r
 
     # Push config to device
     cisco_asa = nr.filter(platform="cisco_asa")
@@ -781,15 +779,34 @@ def configureDevice(data):
     app.logger.info(f'DETAILS: {asa_return}')
     app.logger.info(f'DETAILS: {junos_return}')
 
-    #emit("progress_bar", {"status": "success", "progress": 90})
+    emit("progress_bar", {"status": "success", "progress": 90})
 
     # Log/Return results
-    #app.logger.info(f'Failed: {r["device"].failed}')
-    #app.logger.info(f'Changed: {r["device"].changed}')
+    if junos_return.get("device"):
+        app.logger.info(f'Failed: {junos_return["device"].failed}')
+        app.logger.info(f'Changed: {junos_return["device"].changed}')
+        emit("nornir_result", f'{junos_return["device"].host}')
+        emit("nornir_result", f'Failed: {junos_return["device"].failed}')
+        emit("nornir_result", f'Changed: {junos_return["device"].changed}')
+        emit("nornir_result", f'{junos_return["device"].result}')
 
-    #emit("nornir_result", f'Failed: {r["device"].failed}')
-    #emit("nornir_result", f'Changed: {r["device"].changed}')
-    #emit("nornir_result", f'{r["device"][1].diff}')
+        try:
+            emit("nornir_result", f'{junos_return["device"][1].diff}')
+        except:
+            pass
+
+    if asa_return.get("device"):
+        app.logger.info(f'Failed: {asa_return["device"].failed}')
+        app.logger.info(f'Changed: {asa_return["device"].changed}')
+        emit("nornir_result", f'{asa_return["device"].host}')
+        emit("nornir_result", f'Failed: {asa_return["device"].failed}')
+        emit("nornir_result", f'Changed: {asa_return["device"].changed}')
+        emit("nornir_result", f'{asa_return["device"].result}')
+
+        try:
+            emit("nornir_result", f'{asa_return["device"][1].diff}')
+        except:
+            pass
 
     # Cleanup our workspace
     try:
