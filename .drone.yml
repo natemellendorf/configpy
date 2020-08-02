@@ -37,11 +37,11 @@ steps:
 - name: Junos
   image: jfloff/alpine-python
   commands:
-  - apt-get install libxml2-dev libxslt-dev python-dev
+  - apk add libxml2-dev libxslt-dev python3-dev gcc build-base
   - pip3 install nornir
 
 - name: ASAv
   image: jfloff/alpine-python
   commands:
-  - apt-get install libxml2-dev libxslt-dev python-dev
+  - apk add libxml2-dev libxslt-dev python3-dev gcc build-base
   - pip3 install nornir
