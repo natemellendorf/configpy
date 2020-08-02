@@ -11,7 +11,7 @@ steps:
   - pip3 install pylint_runner
   - pylint_runner
 
-  ---
+---
   kind: pipeline
   type: docker
   name: Testing
