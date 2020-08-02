@@ -14,7 +14,7 @@ steps:
 ---
 kind: pipeline
 type: docker
-name: Testing
+name: UnitTests
 
 steps:
 - name: PyTest
@@ -37,9 +37,11 @@ steps:
 - name: Junos
   image: jfloff/alpine-python
   commands:
+  - apt-get install libxml2-dev libxslt-dev python-dev
   - pip3 install nornir
 
 - name: ASAv
   image: jfloff/alpine-python
   commands:
+  - apt-get install libxml2-dev libxslt-dev python-dev
   - pip3 install nornir
