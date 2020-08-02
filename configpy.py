@@ -773,20 +773,23 @@ def configureDevice(data):
 
     # Push config to device
     cisco_asa = nr.filter(platform="cisco_asa")
-    r = cisco_asa.run(napalm_get, getters=['get_interfaces_ip'])
+    asa_return = cisco_asa.run(asa_update_config, config=config)
 
     junos = nr.filter(platform="junos")
-    r = junos.run(junos_update_config, config=config)
+    junos_return = junos.run(junos_update_config, config=config)
 
-    emit("progress_bar", {"status": "success", "progress": 90})
+    app.logger.info(f'DETAILS: {asa_return}')
+    app.logger.info(f'DETAILS: {junos_return}')
+
+    #emit("progress_bar", {"status": "success", "progress": 90})
 
     # Log/Return results
-    app.logger.info(f'Failed: {r["device"].failed}')
-    app.logger.info(f'Changed: {r["device"].changed}')
+    #app.logger.info(f'Failed: {r["device"].failed}')
+    #app.logger.info(f'Changed: {r["device"].changed}')
 
-    emit("nornir_result", f'Failed: {r["device"].failed}')
-    emit("nornir_result", f'Changed: {r["device"].changed}')
-    emit("nornir_result", f'{r["device"][1].diff}')
+    #emit("nornir_result", f'Failed: {r["device"].failed}')
+    #emit("nornir_result", f'Changed: {r["device"].changed}')
+    #emit("nornir_result", f'{r["device"][1].diff}')
 
     # Cleanup our workspace
     try:
