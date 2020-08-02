@@ -12,9 +12,9 @@ steps:
   - pylint_runner
 
 ---
-  kind: pipeline
-  type: docker
-  name: Testing
+kind: pipeline
+type: docker
+name: Testing
 
 steps:
 - name: PyTest
