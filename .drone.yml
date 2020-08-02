@@ -16,6 +16,7 @@ steps:
   type: docker
   name: Testing
 
+steps:
 - name: PyTest
   image: jfloff/alpine-python
   commands:
