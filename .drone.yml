@@ -1,17 +1,22 @@
 ---
 kind: pipeline
 type: docker
-name: default
+name: Linting
 
 steps:
-- name: Linting
+- name: PyLint
   image: jfloff/alpine-python
   commands:
   - pip3 install -r requirements.txt
   - pip3 install pylint_runner
   - pylint_runner
 
-- name: Testing
+  ---
+  kind: pipeline
+  type: docker
+  name: Testing
+
+- name: PyTest
   image: jfloff/alpine-python
   commands:
   - pip3 install -r requirements.txt
