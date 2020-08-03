@@ -7,6 +7,7 @@ steps:
 - name: PyLint
   image: jfloff/alpine-python
   commands:
+  - apk add libxml2-dev libxslt-dev python3-dev gcc build-base
   - pip3 install -r requirements.txt
   - pip3 install pylint_runner
   - pylint_runner
@@ -20,6 +21,7 @@ steps:
 - name: PyTest
   image: jfloff/alpine-python
   commands:
+  - apk add libxml2-dev libxslt-dev python3-dev gcc build-base
   - pip3 install -r requirements.txt
   - pip3 install pytest
   - pytest ./tests/
