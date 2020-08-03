@@ -36,6 +36,11 @@ name: Dry Run
 steps:
 - name: Junos
   image: jfloff/alpine-python
+  environment:
+    SRX_PASSWORD:
+      from_secret: srx_password
+    SRX_USER:
+      from_secret: srx_username
   commands:
   - apk add libxml2-dev libxslt-dev python3-dev gcc build-base
   - pip3 install nornir
