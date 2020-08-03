@@ -7,7 +7,7 @@ ciscoconfparse==1.5.19
 Click==7.0
 colorama==0.4.3
 cryptography==2.8
-dataclasses==0.7
+dataclasses
 dnspython==1.16.0
 dominate==2.4.0
 eventlet==0.25.1
